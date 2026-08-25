@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { randomUUID } from 'expo-crypto';
 
 import { cancelTaskReminder, syncTaskReminder } from '@/lib/notifications';
+import type { TaskRecord } from '@/lib/types';
 
 import { db } from './client';
 import { categories, tasks } from './schema';
@@ -42,6 +43,15 @@ export async function setTaskCompleted(id: string, completed: boolean): Promise<
 export async function deleteTask(id: string): Promise<void> {
   db.delete(tasks).where(eq(tasks.id, id)).run();
   await cancelTaskReminder(id);
+}
+
+// Reinstates a task removed via the swipe/menu delete's undo toast, keyed on
+// its own snapshot rather than createTask's fresh-uuid path — preserving id
+// and createdAt is what makes it re-sort back into the same list position
+// (src/lib/ordering.ts) instead of reappearing as a brand-new task.
+export async function restoreTask(task: TaskRecord): Promise<void> {
+  const row = db.insert(tasks).values(task).returning().get();
+  await syncTaskReminder(row);
 }
 
 export interface CategoryInput {

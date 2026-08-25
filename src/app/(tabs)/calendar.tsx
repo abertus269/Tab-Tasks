@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { RowActionsSheet } from '@/components/RowActionsSheet';
+import { TaskContextMenu } from '@/components/TaskContextMenu';
+import { UndoToast } from '@/components/UndoToast';
 import { DayView } from '@/components/calendar/DayView';
 import { type CalendarMode, SegmentedControl } from '@/components/calendar/SegmentedControl';
 import { MonthView } from '@/components/calendar/MonthView';
@@ -32,17 +33,21 @@ export default function CalendarScreen() {
           anchorDate={anchorDate}
           onNavigate={setAnchorDate}
           onToggleComplete={rowActions.toggleComplete}
-          onOpenMenu={rowActions.openMenu}
+          onDelete={rowActions.deleteWithUndo}
+          onLongPress={rowActions.openMenu}
           onTaskPress={rowActions.editTask}
           onAddTask={() => rowActions.openNewTask(toDateString(anchorDate))}
+          registerExit={rowActions.registerRowExit}
         />
       )}
       {mode === 'week' && (
         <WeekView
           anchorDate={anchorDate}
           onToggleComplete={rowActions.toggleComplete}
-          onOpenMenu={rowActions.openMenu}
+          onDelete={rowActions.deleteWithUndo}
+          onLongPress={rowActions.openMenu}
           onTaskPress={rowActions.editTask}
+          registerExit={rowActions.registerRowExit}
         />
       )}
       {mode === 'month' && (
@@ -63,13 +68,15 @@ export default function CalendarScreen() {
         />
       )}
 
-      <RowActionsSheet
-        visible={!!rowActions.menuTask}
-        taskTitle={rowActions.menuTask?.title ?? ''}
+      <TaskContextMenu
+        task={rowActions.menu?.task ?? null}
+        anchor={rowActions.menu?.anchor ?? null}
         onClose={rowActions.closeMenu}
-        onEdit={() => rowActions.menuTask && rowActions.editTask(rowActions.menuTask)}
-        onDelete={rowActions.confirmDelete}
+        onEdit={() => rowActions.menu && rowActions.editTask(rowActions.menu.task)}
+        onDelete={rowActions.confirmMenuDelete}
       />
+
+      <UndoToast visible={!!rowActions.pendingUndo} onUndo={rowActions.undoDelete} />
     </SafeAreaView>
   );
 }

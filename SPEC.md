@@ -12,28 +12,28 @@ No account, no cloud sync — everything lives on-device.
 
 ### 2.1 Task
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | string (uuid) | |
-| `title` | string | required |
-| `dueDate` | date | required — drives all sorting/grouping |
-| `dueTime` | time | optional |
-| `description` | string | optional, free text |
-| `categoryId` | string \| null | references a Category |
-| `icon` | Lucide icon name | optional, user-selected |
-| `completed` | boolean | default `false` |
-| `createdAt` | datetime | for tie-breaking / audit |
+| Field         | Type             | Notes                                  |
+| ------------- | ---------------- | -------------------------------------- |
+| `id`          | string (uuid)    |                                        |
+| `title`       | string           | required                               |
+| `dueDate`     | date             | required — drives all sorting/grouping |
+| `dueTime`     | time             | optional                               |
+| `description` | string           | optional, free text                    |
+| `categoryId`  | string \| null   | references a Category                  |
+| `icon`        | Lucide icon name | optional, user-selected                |
+| `completed`   | boolean          | default `false`                        |
+| `createdAt`   | datetime         | for tie-breaking / audit               |
 
 ### 2.2 Category
 
 User-created, user-editable groupings (e.g. "Personal", "Studies", "Work").
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | string (uuid) | |
-| `name` | string | required, unique |
-| `color` | string (hex) | used for chips/badges |
-| `icon` | Lucide icon name | optional, shown on the category's chip |
+| Field   | Type             | Notes                                  |
+| ------- | ---------------- | -------------------------------------- |
+| `id`    | string (uuid)    |                                        |
+| `name`  | string           | required, unique                       |
+| `color` | string (hex)     | used for chips/badges                  |
+| `icon`  | Lucide icon name | optional, shown on the category's chip |
 
 - Full CRUD: create, rename, recolor, re-icon, delete.
 - Deleting a category should prompt: reassign its tasks to "Uncategorized" or
@@ -64,7 +64,7 @@ A single "Add Task" entry point should be reachable from both tabs.
   strikethrough and visually recede (dimmed), but stay in the list.
 - Each row shows: checkbox · title · category chip · due date/time · optional
   task icon.
-- Optional: category filter chips above the list to narrow the *view* only —
+- Optional: category filter chips above the list to narrow the _view_ only —
   this never changes the underlying merged sort order.
 
 ## 5. Calendar Tab
@@ -74,18 +74,22 @@ currently-viewed date persists across mode switches where it makes sense
 (e.g. Day→Week keeps you in the same week).
 
 ### 5.1 Day
+
 Vertical agenda for a single day — same row style as the Tasks tab. A
 date strip/picker moves a day at a time.
 
 ### 5.2 Week
+
 Same vertical scroll pattern as Day, spanning 7 days — each day is a labeled
 section containing its tasks, stacked one after another down the page.
 
 ### 5.3 Month
+
 A traditional calendar grid (weeks as rows, days as columns). Each date cell
 shows a task-count indicator. Tapping a date jumps into Day view for it.
 
 ### 5.4 Year
+
 A list of years that have tasks (plus the current year), each showing the
 total task count for that year. Tapping a year is the entry point into that
 year's Month view.
@@ -103,7 +107,7 @@ network dependency. Data must survive app restarts and updates.
 
 ## 8. Suggested Technical Approach
 
-*A recommendation, not a hard requirement.*
+_A recommendation, not a hard requirement._
 
 - **Framework:** Expo / React Native + TypeScript
 - **Local storage:** `expo-sqlite`, with a thin query layer (e.g. Drizzle ORM)
@@ -120,8 +124,8 @@ network dependency. Data must survive app restarts and updates.
 
 Flagged for you to confirm or override before/while building:
 
-- **Icon scope:** assumes each *task* gets its own optional icon, separate
-  from each *category's* icon (the literal reading of the brief). If you
+- **Icon scope:** assumes each _task_ gets its own optional icon, separate
+  from each _category's_ icon (the literal reading of the brief). If you
   actually meant category-level icons only, that's a smaller, cleaner model
   — worth deciding before the icon picker gets built.
 - **Completed tasks:** assumes they stay visible (dimmed/struck-through)
@@ -134,3 +138,43 @@ Flagged for you to confirm or override before/while building:
 - **Multiple categories per task:** assumes one category per task — the
   simplest reading of "separation between personal, studies, etc." Multi-tag
   support would be a bigger model change.
+
+## 10. Extra Features
+
+Will be prompted to do these and when asked to do so this will be used as reference
+Also make sure to use this indicator of completion
+[] -> haven't started
+[/] -> currently working on
+[X] -> completed
+[-] -> needs revisiting
+
+- **Tapping On Tasks:** When tapping on a task it currently only completes it, ontop of swiping the task away,
+  lets say for one tap, it changes it to it being marked as being worked on, another tap ends the task,
+  another tap restarts it back to uncomplete. I wan't this to be a toggleable setting if users would rather click then task done
+
+- **Theming:** Maybe in the settings (LATER) changing the theme of the app can be possible.
+  Through the colours that have been already selected and are being used for category colours.
+
+- **Settings:**
+
+- **Swipe to Delete:** [X] Dragging a task row either direction past ~40% of its width (or a fast
+  flick) deletes it, with a 5s Undo toast; a partial drag springs back to rest. The ⋮ overflow
+  button is gone — long-pressing a row now opens an Edit/Delete menu anchored on the row itself
+  instead of a sheet at the bottom of the screen.
+
+## 10. Bugs/ Fixes
+
+When these will be prompted, it is minor (maybe major) fixes that I would like to occur.
+Make sure to thoroughly make sure that the task is done to completion and doesn't result in more side effects.
+Also make sure to use this indicator of completion
+[] -> haven't started
+[/] -> currently working on
+[X] -> completed
+[-] -> needs revisiting
+
+- **Add tasks Too Big:**
+
+- **Add tasks Not for Today:** I add tasks for days in the future, but the line indicating today shows that tasks in the future are for today?
+  Surely if all tasks are done for today, make sure to clearly seperate it from future tasks.
+
+- **Month -> going through days:**

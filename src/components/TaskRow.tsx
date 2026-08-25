@@ -1,4 +1,4 @@
-import { Bell, Check, EllipsisVertical } from 'lucide-react-native';
+import { Bell, Check } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CategoryBadge } from '@/components/CategoryBadge';
@@ -12,10 +12,9 @@ interface Props {
   task: TaskWithCategory;
   onToggleComplete: () => void;
   onPress: () => void;
-  onOpenMenu: () => void;
 }
 
-export function TaskRow({ task, onToggleComplete, onPress, onOpenMenu }: Props) {
+export function TaskRow({ task, onToggleComplete, onPress }: Props) {
   // Always show the due date, not just the time — this list merges every
   // date together, and a row's position relative to the today-divider isn't
   // enough on its own to tell a future task from one due today.
@@ -53,10 +52,6 @@ export function TaskRow({ task, onToggleComplete, onPress, onOpenMenu }: Props) 
           )}
         </View>
       </View>
-
-      <Pressable onPress={onOpenMenu} hitSlop={10} style={styles.menuButton}>
-        <EllipsisVertical size={18} color={colors.textSecondary} strokeWidth={1.75} />
-      </Pressable>
     </Pressable>
   );
 }
@@ -114,8 +109,5 @@ const styles = StyleSheet.create({
     fontFamily: fonts.mono,
     fontSize: fontSize.caption,
     color: colors.textSecondary,
-  },
-  menuButton: {
-    padding: spacing.xs,
   },
 });

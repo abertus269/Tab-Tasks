@@ -2,18 +2,20 @@ import { format } from 'date-fns';
 import { useMemo, useRef } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 
-import { TaskRow } from '@/components/TaskRow';
+import { SwipeableTaskRow } from '@/components/SwipeableTaskRow';
 import { useTasksInRange } from '@/hooks/useTasks';
 import { continuousDayRange, parseDateString, toDateString, todayString, weekdayAbbr } from '@/lib/dates';
-import type { TaskWithCategory } from '@/lib/types';
+import type { RowAnchor, TaskWithCategory } from '@/lib/types';
 import { colors, spacing } from '@/theme/tokens';
 import { fonts, fontSize } from '@/theme/typography';
 
 interface Props {
   anchorDate: Date;
   onToggleComplete: (task: TaskWithCategory) => void;
-  onOpenMenu: (task: TaskWithCategory) => void;
+  onDelete: (task: TaskWithCategory) => void;
+  onLongPress: (task: TaskWithCategory, anchor: RowAnchor) => void;
   onTaskPress: (task: TaskWithCategory) => void;
+  registerExit: (taskId: string, trigger: (direction: 1 | -1) => void) => () => void;
 }
 
 interface DayItem {
@@ -27,7 +29,7 @@ const MONTHS_FORWARD = 2; // >= 3 months of continuous scroll, biased toward upc
 // SPEC.md §5.2, extended per user request: a continuously scrollable agenda —
 // no prev/next pagination — spanning several months, each day a labeled
 // section stacked one after another. Opens scrolled to `anchorDate`.
-export function WeekView({ anchorDate, onToggleComplete, onOpenMenu, onTaskPress }: Props) {
+export function WeekView({ anchorDate, onToggleComplete, onDelete, onLongPress, onTaskPress, registerExit }: Props) {
   const listRef = useRef<FlatList<DayItem>>(null);
 
   const allDays = useMemo(() => continuousDayRange(anchorDate, MONTHS_BACK, MONTHS_FORWARD), [anchorDate]);
@@ -52,7 +54,14 @@ export function WeekView({ anchorDate, onToggleComplete, onOpenMenu, onTaskPress
       initialScrollIndex={initialIndex}
       contentContainerStyle={styles.list}
       renderItem={({ item }) => (
-        <DayBlock item={item} onToggleComplete={onToggleComplete} onOpenMenu={onOpenMenu} onTaskPress={onTaskPress} />
+        <DayBlock
+          item={item}
+          onToggleComplete={onToggleComplete}
+          onDelete={onDelete}
+          onLongPress={onLongPress}
+          onTaskPress={onTaskPress}
+          registerExit={registerExit}
+        />
       )}
       onScrollToIndexFailed={(info) => {
         // Row heights vary with task count, so the layout estimate that backs
@@ -67,11 +76,13 @@ export function WeekView({ anchorDate, onToggleComplete, onOpenMenu, onTaskPress
 interface DayBlockProps {
   item: DayItem;
   onToggleComplete: (task: TaskWithCategory) => void;
-  onOpenMenu: (task: TaskWithCategory) => void;
+  onDelete: (task: TaskWithCategory) => void;
+  onLongPress: (task: TaskWithCategory, anchor: RowAnchor) => void;
   onTaskPress: (task: TaskWithCategory) => void;
+  registerExit: (taskId: string, trigger: (direction: 1 | -1) => void) => () => void;
 }
 
-function DayBlock({ item, onToggleComplete, onOpenMenu, onTaskPress }: DayBlockProps) {
+function DayBlock({ item, onToggleComplete, onDelete, onLongPress, onTaskPress, registerExit }: DayBlockProps) {
   const date = parseDateString(item.date);
   const isToday = item.date === todayString();
   const label = `${weekdayAbbr(date)} · ${format(date, 'MMM d')}${isToday ? ' · Today' : ''}`;
@@ -83,14 +94,15 @@ function DayBlock({ item, onToggleComplete, onOpenMenu, onTaskPress }: DayBlockP
         <Text style={styles.emptyDay}>No tasks</Text>
       ) : (
         item.tasks.map((task) => (
-          <View key={task.id} style={styles.rowWrap}>
-            <TaskRow
-              task={task}
-              onToggleComplete={() => onToggleComplete(task)}
-              onPress={() => onTaskPress(task)}
-              onOpenMenu={() => onOpenMenu(task)}
-            />
-          </View>
+          <SwipeableTaskRow
+            key={task.id}
+            task={task}
+            onToggleComplete={() => onToggleComplete(task)}
+            onPress={() => onTaskPress(task)}
+            onDelete={onDelete}
+            onLongPress={onLongPress}
+            registerExit={registerExit}
+          />
         ))
       )}
     </View>
@@ -108,9 +120,6 @@ const styles = StyleSheet.create({
   },
   dayHeaderToday: {
     color: colors.accentPrimary,
-  },
-  rowWrap: {
-    paddingBottom: spacing.sm,
   },
   emptyDay: {
     fontFamily: fonts.body,

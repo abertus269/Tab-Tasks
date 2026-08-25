@@ -5,9 +5,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AddTaskButton } from '@/components/AddTaskButton';
 import { EmptyState } from '@/components/EmptyState';
 import { FilterPill } from '@/components/FilterPill';
-import { RowActionsSheet } from '@/components/RowActionsSheet';
-import { TaskRow } from '@/components/TaskRow';
+import { SwipeableTaskRow } from '@/components/SwipeableTaskRow';
+import { TaskContextMenu } from '@/components/TaskContextMenu';
 import { TodayDivider } from '@/components/TodayDivider';
+import { UndoToast } from '@/components/UndoToast';
 import { useCategories } from '@/hooks/useCategories';
 import { useTaskRowActions } from '@/hooks/useTaskRowActions';
 import { useAllTasks } from '@/hooks/useTasks';
@@ -86,27 +87,29 @@ export default function TasksScreen() {
             item.type === 'divider' ? (
               <TodayDivider />
             ) : (
-              <View style={styles.rowWrap}>
-                <TaskRow
-                  task={item.task}
-                  onToggleComplete={() => rowActions.toggleComplete(item.task)}
-                  onPress={() => rowActions.editTask(item.task)}
-                  onOpenMenu={() => rowActions.openMenu(item.task)}
-                />
-              </View>
+              <SwipeableTaskRow
+                task={item.task}
+                onToggleComplete={() => rowActions.toggleComplete(item.task)}
+                onPress={() => rowActions.editTask(item.task)}
+                onDelete={rowActions.deleteWithUndo}
+                onLongPress={rowActions.openMenu}
+                registerExit={rowActions.registerRowExit}
+              />
             )
           }
           ListFooterComponent={<AddTaskButton onPress={() => rowActions.openNewTask()} />}
         />
       )}
 
-      <RowActionsSheet
-        visible={!!rowActions.menuTask}
-        taskTitle={rowActions.menuTask?.title ?? ''}
+      <TaskContextMenu
+        task={rowActions.menu?.task ?? null}
+        anchor={rowActions.menu?.anchor ?? null}
         onClose={rowActions.closeMenu}
-        onEdit={() => rowActions.menuTask && rowActions.editTask(rowActions.menuTask)}
-        onDelete={rowActions.confirmDelete}
+        onEdit={() => rowActions.menu && rowActions.editTask(rowActions.menu.task)}
+        onDelete={rowActions.confirmMenuDelete}
       />
+
+      <UndoToast visible={!!rowActions.pendingUndo} onUndo={rowActions.undoDelete} />
     </SafeAreaView>
   );
 }
@@ -137,9 +140,6 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     flexGrow: 1,
     gap: spacing.sm,
-  },
-  rowWrap: {
-    paddingBottom: spacing.sm,
   },
   emptyWrap: {
     flex: 1,

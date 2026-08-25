@@ -4,25 +4,36 @@ import { FlatList, StyleSheet, View } from 'react-native';
 import { AddTaskButton } from '@/components/AddTaskButton';
 import { DateNavHeader } from './DateNavHeader';
 import { EmptyState } from '@/components/EmptyState';
-import { TaskRow } from '@/components/TaskRow';
+import { SwipeableTaskRow } from '@/components/SwipeableTaskRow';
 import { useTasksInRange } from '@/hooks/useTasks';
 import { toDateString } from '@/lib/dates';
-import type { TaskWithCategory } from '@/lib/types';
+import type { RowAnchor, TaskWithCategory } from '@/lib/types';
 import { spacing } from '@/theme/tokens';
 
 interface Props {
   anchorDate: Date;
   onNavigate: (date: Date) => void;
   onToggleComplete: (task: TaskWithCategory) => void;
-  onOpenMenu: (task: TaskWithCategory) => void;
+  onDelete: (task: TaskWithCategory) => void;
+  onLongPress: (task: TaskWithCategory, anchor: RowAnchor) => void;
   onTaskPress: (task: TaskWithCategory) => void;
   onAddTask: () => void;
+  registerExit: (taskId: string, trigger: (direction: 1 | -1) => void) => () => void;
 }
 
 // SPEC.md §5.1 — vertical agenda for a single day, same row style as Tasks tab.
 // Also the Calendar tab's Add Task entry point (SPEC.md §3 requires one
 // reachable from both tabs).
-export function DayView({ anchorDate, onNavigate, onToggleComplete, onOpenMenu, onTaskPress, onAddTask }: Props) {
+export function DayView({
+  anchorDate,
+  onNavigate,
+  onToggleComplete,
+  onDelete,
+  onLongPress,
+  onTaskPress,
+  onAddTask,
+  registerExit,
+}: Props) {
   const dateStr = toDateString(anchorDate);
   const dayTasks = useTasksInRange(dateStr, dateStr);
 
@@ -37,13 +48,14 @@ export function DayView({ anchorDate, onNavigate, onToggleComplete, onOpenMenu, 
         data={dayTasks}
         keyExtractor={(t) => t.id}
         contentContainerStyle={styles.list}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
         renderItem={({ item }) => (
-          <TaskRow
+          <SwipeableTaskRow
             task={item}
             onToggleComplete={() => onToggleComplete(item)}
             onPress={() => onTaskPress(item)}
-            onOpenMenu={() => onOpenMenu(item)}
+            onDelete={onDelete}
+            onLongPress={onLongPress}
+            registerExit={registerExit}
           />
         )}
         ListEmptyComponent={<EmptyState message="No tasks for this day." />}
@@ -56,5 +68,4 @@ export function DayView({ anchorDate, onNavigate, onToggleComplete, onOpenMenu, 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   list: { padding: spacing.lg, flexGrow: 1 },
-  separator: { height: spacing.sm },
 });
