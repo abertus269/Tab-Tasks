@@ -73,6 +73,7 @@ function RootLayoutContent() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="task-form" options={{ presentation: 'modal' }} />
           <Stack.Screen name="category-manager" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="settings" options={{ presentation: 'modal' }} />
         </Stack>
       </SafeAreaProvider>
     </GestureHandlerRootView>

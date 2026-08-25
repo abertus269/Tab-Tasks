@@ -1,5 +1,7 @@
+import { useRouter } from 'expo-router';
+import { Settings } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddTaskButton } from '@/components/AddTaskButton';
@@ -26,6 +28,7 @@ interface FilterOption {
 }
 
 export default function TasksScreen() {
+  const router = useRouter();
   const allTasks = useAllTasks();
   const categories = useCategories();
   const rowActions = useTaskRowActions();
@@ -52,7 +55,12 @@ export default function TasksScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Text style={styles.title}>Tasks</Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>Tasks</Text>
+        <Pressable onPress={() => router.push('/settings')} hitSlop={8} style={styles.settingsButton}>
+          <Settings size={22} color={colors.textSecondary} strokeWidth={1.75} />
+        </Pressable>
+      </View>
 
       <FlatList
         horizontal
@@ -116,13 +124,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bgBase,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+  },
   title: {
     fontFamily: fonts.heading,
     fontSize: fontSize.display,
     color: colors.textPrimary,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
+  },
+  settingsButton: {
+    padding: spacing.xs,
   },
   filterList: {
     flexGrow: 0,

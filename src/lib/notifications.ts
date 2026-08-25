@@ -64,3 +64,10 @@ export async function syncTaskReminder(task: TaskRecord): Promise<void> {
 export async function cancelTaskReminder(taskId: string): Promise<void> {
   await Notifications.cancelScheduledNotificationAsync(taskId);
 }
+
+// A replace-mode backup import drops every task row at once, so there's no
+// per-id list left to key cancelTaskReminder off of — same reasoning as
+// category delete-with-tasks in mutations.ts, just for the whole table.
+export async function cancelAllReminders(): Promise<void> {
+  await Notifications.cancelAllScheduledNotificationsAsync();
+}

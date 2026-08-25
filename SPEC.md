@@ -134,3 +134,19 @@ Flagged for you to confirm or override before/while building:
 - **Multiple categories per task:** assumes one category per task — the
   simplest reading of "separation between personal, studies, etc." Multi-tag
   support would be a bigger model change.
+
+## 10. Extra Features
+
+Indicator of completion:
+[] -> haven't started
+[/] -> currently working on
+[X] -> completed
+[-] -> needs revisiting
+
+- **Settings:** [X] A Settings screen, reached via a gear next to the "Tasks"
+  title, holding a **Data** section with **Export backup** (writes every task
+  and category to a JSON file and opens the share sheet) and **Import backup**
+  (pick a file, then choose Merge or Replace). Still local-only per §7 — no
+  network, no account; the file only leaves the device if the user shares it
+  themselves. Also the intended home for theming and other app-wide
+  preferences later.
