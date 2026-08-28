@@ -13,7 +13,7 @@ import { spacing } from '@/theme/tokens';
 interface Props {
   anchorDate: Date;
   onNavigate: (date: Date) => void;
-  onToggleComplete: (task: TaskWithCategory) => void;
+  onSwipeComplete: (task: TaskWithCategory) => void;
   onDelete: (task: TaskWithCategory) => void;
   onLongPress: (task: TaskWithCategory, anchor: RowAnchor) => void;
   onTaskPress: (task: TaskWithCategory) => void;
@@ -27,7 +27,7 @@ interface Props {
 export function DayView({
   anchorDate,
   onNavigate,
-  onToggleComplete,
+  onSwipeComplete,
   onDelete,
   onLongPress,
   onTaskPress,
@@ -51,8 +51,8 @@ export function DayView({
         renderItem={({ item }) => (
           <SwipeableTaskRow
             task={item}
-            onToggleComplete={() => onToggleComplete(item)}
             onPress={() => onTaskPress(item)}
+            onSwipeComplete={onSwipeComplete}
             onDelete={onDelete}
             onLongPress={onLongPress}
             registerExit={registerExit}

@@ -1,4 +1,14 @@
-import { continuousDayRange, continuousMonthRange, monthGrid, monthGridRange, toDateString, weekdayAbbr, weekDays } from '../dates';
+import {
+  continuousMonthRange,
+  continuousWeekRange,
+  formatWeekRangeLabel,
+  monthGrid,
+  monthGridRange,
+  sumTaskCounts,
+  toDateString,
+  weekdayAbbr,
+  weekDays,
+} from '../dates';
 
 describe('weekDays', () => {
   it('returns 7 consecutive dates', () => {
@@ -76,23 +86,6 @@ describe('weekdayAbbr', () => {
   });
 });
 
-describe('continuousDayRange', () => {
-  it('spans at least 3 months when given 1 month back and 2 forward', () => {
-    const days = continuousDayRange(new Date(2026, 7, 21), 1, 2);
-    // July 1 through October 31 inclusive.
-    expect(days[0]).toBe('2026-07-01');
-    expect(days[days.length - 1]).toBe('2026-10-31');
-    expect(days.length).toBeGreaterThanOrEqual(90); // "at least 3 months" of days
-  });
-
-  it('contains no gaps or duplicates across the month boundaries it spans', () => {
-    const days = continuousDayRange(new Date(2026, 1, 10), 1, 1); // spans Feb (leap-adjacent)
-    for (let i = 1; i < days.length; i++) {
-      expect(days[i] > days[i - 1]).toBe(true); // strictly increasing, so no dup/gap logic error
-    }
-  });
-});
-
 describe('continuousMonthRange', () => {
   it('returns one Date per month, first-of-month, in order', () => {
     const months = continuousMonthRange(new Date(2026, 7, 21), 1, 2);
@@ -107,5 +100,50 @@ describe('continuousMonthRange', () => {
     const months = continuousMonthRange(new Date(2026, 0, 15), 1, 1); // Jan 2026
     expect(toDateString(months[0])).toBe('2025-12-01');
     expect(toDateString(months[2])).toBe('2026-02-01');
+  });
+});
+
+describe('continuousWeekRange', () => {
+  it('returns one week-start Date per week, in order, 7 days apart', () => {
+    const weeks = continuousWeekRange(new Date(2026, 7, 21), 1, 2); // Fri Aug 21 2026
+    expect(weeks).toHaveLength(4); // 1 back + anchor's week + 2 forward
+    for (let i = 1; i < weeks.length; i++) {
+      const gap = (weeks[i].getTime() - weeks[i - 1].getTime()) / (1000 * 60 * 60 * 24);
+      expect(gap).toBe(7);
+    }
+  });
+
+  it("anchors weeksBack=0/weeksForward=0 to exactly the anchor's own week", () => {
+    const weeks = continuousWeekRange(new Date(2026, 7, 21), 0, 0); // Fri Aug 21 2026
+    expect(weeks).toHaveLength(1);
+    expect(toDateString(weeks[0])).toBe('2026-08-16'); // Sunday-start of that week
+  });
+});
+
+describe('formatWeekRangeLabel', () => {
+  it('formats a same-month week as "MMM d – d"', () => {
+    expect(formatWeekRangeLabel(new Date(2026, 7, 24))).toBe('Aug 23 – 29');
+  });
+
+  it('formats a cross-month week as "MMM d – MMM d"', () => {
+    // Week of Aug 30 2026 (Sun) runs Aug 30 – Sep 5.
+    expect(formatWeekRangeLabel(new Date(2026, 7, 31))).toBe('Aug 30 – Sep 5');
+  });
+
+  it('formats a cross-year week with both years spelled out', () => {
+    // 2026-12-27 is a Sunday; that week runs Dec 27 2026 – Jan 2 2027.
+    expect(formatWeekRangeLabel(new Date(2026, 11, 29))).toBe('Dec 27, 2026 – Jan 2, 2027');
+  });
+});
+
+describe('sumTaskCounts', () => {
+  it('sums counts for the given keys, defaulting missing keys to 0', () => {
+    const counts = { '2026-08-16': 2, '2026-08-18': 1 };
+    const total = sumTaskCounts(counts, weekDays(new Date(2026, 7, 21)));
+    expect(total).toBe(3);
+  });
+
+  it('returns 0 for an empty count map', () => {
+    expect(sumTaskCounts({}, weekDays(new Date(2026, 7, 21)))).toBe(0);
   });
 });

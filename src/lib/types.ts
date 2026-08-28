@@ -1,3 +1,5 @@
+import type { TaskStatus } from '@/lib/status';
+
 export interface CategoryRecord {
   id: string;
   name: string;
@@ -13,7 +15,7 @@ export interface TaskRecord {
   description: string | null;
   categoryId: string | null;
   icon: string | null;
-  completed: boolean;
+  status: TaskStatus;
   reminderMinutesBefore: number | null;
   createdAt: string;
 }

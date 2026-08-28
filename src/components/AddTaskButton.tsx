@@ -9,11 +9,16 @@ interface Props {
 }
 
 // DESIGN.md §6 — inline button at the bottom of the list, not a FAB, so it
-// doesn't compete with the two-tab bar.
+// doesn't compete with the two-tab bar. Self-sized and centered rather than
+// full-bleed — a full-width lime slab read as too dominant against the
+// task rows above it (SPEC.md "Add tasks Too Big").
 export function AddTaskButton({ onPress }: Props) {
   return (
-    <Pressable onPress={onPress} style={styles.button}>
-      <Plus size={20} color={colors.bgBase} strokeWidth={2.5} />
+    <Pressable
+      onPress={onPress}
+      style={styles.button}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+      <Plus size={16} color={colors.bgBase} strokeWidth={2.5} />
       <Text style={styles.label}>Add task</Text>
     </Pressable>
   );
@@ -24,15 +29,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.sm,
+    alignSelf: 'center',
+    gap: spacing.xs,
     backgroundColor: colors.accentPrimary,
     borderRadius: radius.pill,
-    paddingVertical: spacing.md,
-    marginHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+    marginBottom: spacing.lg,
   },
   label: {
     fontFamily: fonts.bodyMedium,
-    fontSize: fontSize.body,
+    fontSize: fontSize.caption,
     color: colors.bgBase,
   },
 });

@@ -22,21 +22,53 @@ export function compareTasks(a: OrderableTask, b: OrderableTask): number {
   return 0;
 }
 
-export type RenderRow<T> = { type: 'divider' } | { type: 'task'; task: T };
+export type RenderRow<T> =
+  | { type: 'divider'; kind: 'today' | 'upcoming' }
+  | { type: 'emptyToday' }
+  | { type: 'task'; task: T };
 
-// Inserts the today-divider into an already-sorted (by compareTasks) task list.
-// The divider is a derived render position, never a stored row: it sits before
-// the first task whose dueDate >= today. If nothing is overdue that's index 0
-// (top); if everything is overdue it lands after the last row (bottom); an
-// empty list places it at the top.
-export function withTodayDivider<T extends { dueDate: string }>(
+// Inserts the Today/Upcoming dividers into an already-sorted (by
+// compareTasks) task list. Both are derived render positions, never stored
+// rows.
+//
+// The Today divider sits before the first task whose dueDate >= today —
+// unchanged from the original single-divider behavior: nothing overdue puts
+// it at index 0, everything overdue puts it after the last row, an empty
+// list puts it at the top.
+//
+// The Upcoming divider sits before the first task whose dueDate > today, and
+// only appears when a future task actually exists — a list with nothing
+// after today just keeps the lone Today divider, exactly as before.
+//
+// When there's a future task but nothing due exactly today, the two
+// dividers would land back-to-back; a muted "Nothing due today" row goes
+// between them instead of letting a future task sit directly under "Today"
+// (the bug this fixes — see SPEC.md's "Add tasks Not for Today").
+export function withListDividers<T extends { dueDate: string }>(
   tasks: T[],
   todayStr: string,
 ): RenderRow<T>[] {
   const firstNotOverdue = tasks.findIndex((t) => t.dueDate >= todayStr);
-  const insertAt = firstNotOverdue === -1 ? tasks.length : firstNotOverdue;
+  const todayIndex = firstNotOverdue === -1 ? tasks.length : firstNotOverdue;
 
-  const rows: RenderRow<T>[] = tasks.map((task) => ({ type: 'task', task }));
-  rows.splice(insertAt, 0, { type: 'divider' });
+  const firstFuture = tasks.findIndex((t) => t.dueDate > todayStr);
+  const upcomingIndex = firstFuture === -1 ? tasks.length : firstFuture;
+
+  const hasFuture = upcomingIndex < tasks.length;
+  const hasToday = todayIndex < upcomingIndex;
+
+  const rows: RenderRow<T>[] = [];
+  for (let i = 0; i <= tasks.length; i++) {
+    if (i === todayIndex) {
+      rows.push({ type: 'divider', kind: 'today' });
+      if (hasFuture && !hasToday) {
+        rows.push({ type: 'emptyToday' });
+        rows.push({ type: 'divider', kind: 'upcoming' });
+      }
+    } else if (i === upcomingIndex && hasFuture && hasToday) {
+      rows.push({ type: 'divider', kind: 'upcoming' });
+    }
+    if (i < tasks.length) rows.push({ type: 'task', task: tasks[i] });
+  }
   return rows;
 }

@@ -45,7 +45,7 @@ export async function ensureNotificationPermission(): Promise<boolean> {
 export async function syncTaskReminder(task: TaskRecord): Promise<void> {
   await Notifications.cancelScheduledNotificationAsync(task.id);
 
-  if (task.completed) return;
+  if (task.status === 'done') return;
 
   const fireDate = reminderFireDate(task.dueDate, task.dueTime, task.reminderMinutesBefore);
   if (!fireDate || fireDate.getTime() <= Date.now()) return;

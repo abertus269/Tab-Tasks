@@ -60,7 +60,7 @@ export function TaskContextMenu({ task, anchor, onClose, onEdit, onDelete }: Pro
               { top: safeAnchor.y, left: safeAnchor.x, width: safeAnchor.width },
               rowStyle,
             ]}>
-            <TaskRow task={task} onToggleComplete={() => {}} onPress={() => {}} />
+            <TaskRow task={task} onPress={() => {}} />
           </Animated.View>
         )}
 

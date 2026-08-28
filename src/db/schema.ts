@@ -26,7 +26,8 @@ export const tasks = sqliteTable(
     description: text('description'),
     categoryId: text('category_id').references(() => categories.id, { onDelete: 'set null' }),
     icon: text('icon'),
-    completed: integer('completed', { mode: 'boolean' }).notNull().default(false),
+    // 'todo' -> 'active' -> 'done', cycled by tapping the row (src/lib/status.ts).
+    status: text('status', { enum: ['todo', 'active', 'done'] }).notNull().default('todo'),
     // null = no reminder; 0 = at due time; otherwise minutes before dueDate/dueTime.
     reminderMinutesBefore: integer('reminder_minutes_before'),
     createdAt: text('created_at')
@@ -38,3 +39,11 @@ export const tasks = sqliteTable(
     index('tasks_category_idx').on(table.categoryId),
   ],
 );
+
+// Single-row-per-key app preferences (e.g. tapCyclesStatus) — a key/value
+// table rather than a fixed-column settings row, so a new preference never
+// needs its own migration.
+export const settings = sqliteTable('settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+});

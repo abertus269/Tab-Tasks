@@ -32,10 +32,10 @@ export default function CalendarScreen() {
         <DayView
           anchorDate={anchorDate}
           onNavigate={setAnchorDate}
-          onToggleComplete={rowActions.toggleComplete}
+          onSwipeComplete={rowActions.swipeComplete}
           onDelete={rowActions.deleteWithUndo}
           onLongPress={rowActions.openMenu}
-          onTaskPress={rowActions.editTask}
+          onTaskPress={rowActions.cycleStatus}
           onAddTask={() => rowActions.openNewTask(toDateString(anchorDate))}
           registerExit={rowActions.registerRowExit}
         />
@@ -43,10 +43,11 @@ export default function CalendarScreen() {
       {mode === 'week' && (
         <WeekView
           anchorDate={anchorDate}
-          onToggleComplete={rowActions.toggleComplete}
+          onNavigate={setAnchorDate}
+          onSwipeComplete={rowActions.swipeComplete}
           onDelete={rowActions.deleteWithUndo}
           onLongPress={rowActions.openMenu}
-          onTaskPress={rowActions.editTask}
+          onTaskPress={rowActions.cycleStatus}
           registerExit={rowActions.registerRowExit}
         />
       )}

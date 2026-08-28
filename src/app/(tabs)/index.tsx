@@ -1,19 +1,21 @@
+import { useRouter } from 'expo-router';
+import { Settings } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddTaskButton } from '@/components/AddTaskButton';
 import { EmptyState } from '@/components/EmptyState';
+import { EmptyTodayRow, ListDivider } from '@/components/ListDivider';
 import { FilterPill } from '@/components/FilterPill';
 import { SwipeableTaskRow } from '@/components/SwipeableTaskRow';
 import { TaskContextMenu } from '@/components/TaskContextMenu';
-import { TodayDivider } from '@/components/TodayDivider';
 import { UndoToast } from '@/components/UndoToast';
 import { useCategories } from '@/hooks/useCategories';
 import { useTaskRowActions } from '@/hooks/useTaskRowActions';
 import { useAllTasks } from '@/hooks/useTasks';
 import { todayString } from '@/lib/dates';
-import { withTodayDivider } from '@/lib/ordering';
+import { withListDividers } from '@/lib/ordering';
 import { colors, spacing } from '@/theme/tokens';
 import { fonts, fontSize } from '@/theme/typography';
 
@@ -27,6 +29,7 @@ interface FilterOption {
 }
 
 export default function TasksScreen() {
+  const router = useRouter();
   const allTasks = useAllTasks();
   const categories = useCategories();
   const rowActions = useTaskRowActions();
@@ -49,11 +52,16 @@ export default function TasksScreen() {
     return allTasks.filter((t) => t.categoryId === activeFilter);
   }, [allTasks, activeFilter]);
 
-  const rows = useMemo(() => withTodayDivider(visibleTasks, todayString()), [visibleTasks]);
+  const rows = useMemo(() => withListDividers(visibleTasks, todayString()), [visibleTasks]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Text style={styles.title}>Tasks</Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>Tasks</Text>
+        <Pressable onPress={() => router.push('/settings')} hitSlop={8}>
+          <Settings size={22} color={colors.textSecondary} strokeWidth={1.75} />
+        </Pressable>
+      </View>
 
       <FlatList
         horizontal
@@ -81,22 +89,26 @@ export default function TasksScreen() {
       ) : (
         <FlatList
           data={rows}
-          keyExtractor={(row) => (row.type === 'divider' ? 'divider' : row.task.id)}
+          keyExtractor={(row) => {
+            if (row.type === 'divider') return `divider-${row.kind}`;
+            if (row.type === 'emptyToday') return 'empty-today';
+            return row.task.id;
+          }}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) =>
-            item.type === 'divider' ? (
-              <TodayDivider />
-            ) : (
+          renderItem={({ item }) => {
+            if (item.type === 'divider') return <ListDivider kind={item.kind} />;
+            if (item.type === 'emptyToday') return <EmptyTodayRow />;
+            return (
               <SwipeableTaskRow
                 task={item.task}
-                onToggleComplete={() => rowActions.toggleComplete(item.task)}
-                onPress={() => rowActions.editTask(item.task)}
+                onPress={() => rowActions.cycleStatus(item.task)}
+                onSwipeComplete={rowActions.swipeComplete}
                 onDelete={rowActions.deleteWithUndo}
                 onLongPress={rowActions.openMenu}
                 registerExit={rowActions.registerRowExit}
               />
-            )
-          }
+            );
+          }}
           ListFooterComponent={<AddTaskButton onPress={() => rowActions.openNewTask()} />}
         />
       )}
@@ -119,13 +131,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bgBase,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+  },
   title: {
     fontFamily: fonts.heading,
     fontSize: fontSize.display,
     color: colors.textPrimary,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
   },
   filterList: {
     flexGrow: 0,

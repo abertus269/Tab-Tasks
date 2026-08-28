@@ -23,7 +23,12 @@ function useJoinedTasks(where?: SQL | undefined) {
     return where ? base.where(where) : base;
   }, [where]);
 
-  const { data } = useLiveQuery(query);
+  // drizzle's useLiveQuery defaults its internal effect's deps to `[]` — pass
+  // `[query]` explicitly or it subscribes once with whatever `query` was on
+  // first mount and never re-subscribes when `where` (and so `query`)
+  // changes. Without this, e.g. Calendar's Day view keeps showing the first
+  // day's tasks forever as you navigate to other days.
+  const { data } = useLiveQuery(query, [query]);
 
   return useMemo(() => (data ?? []).map(toTaskWithCategory).sort(compareTasks), [data]);
 }
@@ -60,7 +65,7 @@ export function useTaskCountsInRange(start: string, end: string): Record<string,
         .groupBy(tasks.dueDate),
     [start, end],
   );
-  const { data } = useLiveQuery(query);
+  const { data } = useLiveQuery(query, [query]);
 
   return useMemo(() => {
     const map: Record<string, number> = {};
@@ -86,7 +91,7 @@ export function useYearCounts(): YearCount[] {
         .groupBy(sql`substr(${tasks.dueDate}, 1, 4)`),
     [],
   );
-  const { data } = useLiveQuery(query);
+  const { data } = useLiveQuery(query, [query]);
 
   return useMemo(() => {
     const rows = data ?? [];

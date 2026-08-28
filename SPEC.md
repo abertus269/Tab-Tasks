@@ -21,7 +21,7 @@ No account, no cloud sync — everything lives on-device.
 | `description` | string           | optional, free text                    |
 | `categoryId`  | string \| null   | references a Category                  |
 | `icon`        | Lucide icon name | optional, user-selected                |
-| `completed`   | boolean          | default `false`                        |
+| `status`      | `'todo' \| 'active' \| 'done'` | default `'todo'` — cycled by tapping the row |
 | `createdAt`   | datetime         | for tie-breaking / audit               |
 
 ### 2.2 Category
@@ -56,14 +56,26 @@ A single "Add Task" entry point should be reachable from both tabs.
   sits at the top, regardless of category.
 - **Today divider:** a horizontal line/marker inserted into the list at the
   current date. Everything above is overdue; everything below is today or
-  later. If nothing is overdue, the line sits at the very top.
+  later. If nothing is overdue, the line sits at the very top. A second,
+  quieter **Upcoming** divider sits right after the last task dated today,
+  so a future task can never read as due today just because it's the next
+  row (§10/§11 "Add tasks Not for Today" / "Today bar"). When nothing is due
+  today but a future task exists, a muted "Nothing due today" row sits
+  between the two dividers instead of letting them stack directly on top of
+  each other.
 - **Add:** a persistent "add task" affordance opens the create form (§6).
-- **Remove:** swipe-to-delete or a per-row overflow menu.
-- **Edit:** tapping a task opens it, pre-filled, in the same form.
-- **Complete:** a checkbox toggles `completed`; completed tasks get a
-  strikethrough and visually recede (dimmed), but stay in the list.
-- Each row shows: checkbox · title · category chip · due date/time · optional
-  task icon.
+- **Remove:** swipe-to-complete or long-press → Delete in the row's context
+  menu (the per-row overflow button this section used to describe was
+  replaced — see §10/§11 "Swipe to Complete").
+- **Status/complete:** tapping anywhere on a row cycles its status —
+  `todo → active → done → todo` — via a togglable "cycle" setting (default
+  on); with it off, a tap is a plain done/not-done toggle. Swiping a row
+  either direction is a direct done/undone toggle, independent of that
+  setting. A `done` task gets a strikethrough and visually recedes (dimmed),
+  but stays in the list. Editing lives behind long-press → Edit in the
+  row's context menu.
+- Each row shows: checkbox-style status indicator · title · category chip ·
+  due date/time · optional task icon.
 - Optional: category filter chips above the list to narrow the _view_ only —
   this never changes the underlying merged sort order.
 
@@ -80,8 +92,11 @@ date strip/picker moves a day at a time.
 
 ### 5.2 Week
 
-Same vertical scroll pattern as Day, spanning 7 days — each day is a labeled
-section containing its tasks, stacked one after another down the page.
+A scrollable list of weeks, each showing its date range (e.g. "Aug 24 – 30")
+and total task count — structurally identical to §5.4 Year's list of years,
+one level down. Tapping a week is the entry point into that week's 7-day
+agenda: the same day-by-day stacked layout Day view uses, one labeled
+section per day, bounded to just that week.
 
 ### 5.3 Month
 
@@ -130,8 +145,8 @@ Flagged for you to confirm or override before/while building:
   — worth deciding before the icon picker gets built.
 - **Completed tasks:** assumes they stay visible (dimmed/struck-through)
   rather than disappearing from the list, matching the reference screenshot.
-- **Reminders/notifications:** not mentioned in the brief — out of scope
-  for v1.
+- **Reminders/notifications:** not mentioned in the original brief; shipped
+  post-v1 via `expo-notifications` — see CLAUDE.md's Reminders section.
 - **Recurring tasks:** not mentioned — out of scope for v1, flagging only
   because "Daily tasks" as a category name (from your references) sometimes
   implies recurrence.
@@ -148,21 +163,38 @@ Also make sure to use this indicator of completion
 [X] -> completed
 [-] -> needs revisiting
 
-- **Tapping On Tasks:** When tapping on a task it currently only completes it, ontop of swiping the task away,
+- **Tapping On Tasks:** [X] When tapping on a task it currently only completes it, ontop of swiping the task away,
   lets say for one tap, it changes it to it being marked as being worked on, another tap ends the task,
   another tap restarts it back to uncomplete. I wan't this to be a toggleable setting if users would rather click then task done
+  — done: tapping now cycles todo → active → done → todo, and the cycle can be switched off in
+  Settings (a plain tap then just marks done/not-done). Editing moved to long-press → Edit, since a
+  plain tap is now taken by the status cycle.
 
 - **Theming:** Maybe in the settings (LATER) changing the theme of the app can be possible.
   Through the colours that have been already selected and are being used for category colours.
 
-- **Settings:**
+- **Settings:** [X] A minimal Settings screen (`src/app/settings.tsx`), reached from a gear icon in
+  the Tasks tab header. Currently holds the tap-cycles-status toggle above, stored in a `settings`
+  key/value table so it survives app restarts. A home for Theming later.
 
-- **Swipe to Delete:** [X] Dragging a task row either direction past ~40% of its width (or a fast
-  flick) deletes it, with a 5s Undo toast; a partial drag springs back to rest. The ⋮ overflow
-  button is gone — long-pressing a row now opens an Edit/Delete menu anchored on the row itself
-  instead of a sheet at the bottom of the screen.
+- **Swipe to Complete:** [X] Dragging a task row either direction past ~40% of its width (or a fast
+  flick) marks it done — or undoes it back to todo if it was already done — with a green backdrop
+  and a checkmark icon (previously swipe deleted, in red with a bin icon; see §10/§11 "Swiping should
+  be completed not deleted"). A partial drag springs back to rest. The ⋮ overflow button is gone —
+  long-pressing a row opens an Edit/Delete menu anchored on the row itself, and Delete now lives only
+  there.
 
-## 10. Bugs/ Fixes
+- **WIDGET:** [] Would be nice to see daily tasks if need to be done.
+  And swiping on it completes the task and tapping on it goes into the app.
+  Or does the toggle to doing/ complete, original state.
+  Either as a 2 x 2 or a 2 x 4 widget shape.
+
+- **Exporting Tasks & Categories:** [] Should do automatically.
+  Save tasks and categories should save locally so when
+  Updates come around, tasks will auto import so updates
+  don't muck with it.
+
+## 11. Bugs/ Fixes
 
 When these will be prompted, it is minor (maybe major) fixes that I would like to occur.
 Make sure to thoroughly make sure that the task is done to completion and doesn't result in more side effects.
@@ -172,9 +204,38 @@ Also make sure to use this indicator of completion
 [X] -> completed
 [-] -> needs revisiting
 
-- **Add tasks Too Big:**
+- **Add tasks Too Big:** [X] The Add task button was a full-bleed lime slab (~44px tall, inset 32px
+  vs. the rows' 16px — it didn't even line up with the list). It's now a small, self-sized, centered
+  pill.
 
-- **Add tasks Not for Today:** I add tasks for days in the future, but the line indicating today shows that tasks in the future are for today?
+- **Add tasks Not for Today:** [X] I add tasks for days in the future, but the line indicating today shows that tasks in the future are for today?
   Surely if all tasks are done for today, make sure to clearly seperate it from future tasks.
+  Fixed by adding a second "Upcoming" divider after today's tasks (or a "Nothing due today" row
+  when there aren't any), so a future task never sits directly under "Today" — see §4.
 
-- **Month -> going through days:**
+- **Month -> going through days:** [X] Navigating the Calendar tab's Day view with the ◀ ▶ arrows
+  changed the header's date label but kept showing the *first* day's tasks — the underlying
+  `useLiveQuery` hook (from drizzle's `expo-sqlite` integration) needs its re-subscribe dependencies
+  passed explicitly or it subscribes once on mount and never re-runs the query when the date range
+  changes. Fixed in `src/hooks/useTasks.ts`; applies to Day view, Week view, and Month view's
+  task-count dots alike, since they all go through the same hook.
+
+- **Double bins:** [X] When I delete a task through hold and delete.
+  I see that there are two bins, make sure for swiping, only one bin appears, and when using the holding and deleting option.
+  Make sure either there are no bins, or maybe a bin in the middle.
+  Fixed: only the icon under the edge you actually dragged (or the long-press Delete animation
+  slides toward) shows, for both paths — they share the same underlying animation.
+
+- **Swiping should be completed not deleted:** [X]
+  When I complete a task via swiping, make it green instead of red for deleting, maybe a check mark icon when swiping it away.
+  Done: swiping either direction now marks a task done (or undoes an already-done task back to
+  todo) with a lime-green backdrop and a checkmark icon, instead of deleting. Delete moved entirely
+  to long-press → Delete in the row's context menu.
+
+- **Today bar:** [X]
+  I think the today bar appears that every task even for today and in the future appears to show that every task is for today which is not the case.
+  I was thinking of add a line for Today, Tomorrow, and Later.
+  With all previous tasks above the today being previous.
+  Done via a Today + Upcoming two-band split (§4) — overdue tasks stay unlabelled above Today, as
+  you described. Flag it back open if you still want a distinct third "Tomorrow" band separate from
+  "Later" — that's a small follow-up on top of this, not built yet.

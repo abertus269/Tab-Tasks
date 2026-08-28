@@ -1,4 +1,4 @@
-import { compareTasks, withTodayDivider, type OrderableTask } from '../ordering';
+import { compareTasks, withListDividers, type OrderableTask } from '../ordering';
 
 function task(overrides: Partial<OrderableTask> = {}): OrderableTask {
   return {
@@ -41,38 +41,65 @@ describe('compareTasks', () => {
   });
 });
 
-describe('withTodayDivider', () => {
+describe('withListDividers', () => {
   const today = '2026-08-21';
 
-  it('places the divider at the top when nothing is overdue', () => {
+  it('places the Today divider at the top when nothing is overdue, and adds Upcoming after today', () => {
     const tasks = [task({ dueDate: '2026-08-21' }), task({ dueDate: '2026-08-22' })];
-    const rows = withTodayDivider(tasks, today);
-    expect(rows[0]).toEqual({ type: 'divider' });
-    expect(rows).toHaveLength(3);
+    const rows = withListDividers(tasks, today);
+    expect(rows).toEqual([
+      { type: 'divider', kind: 'today' },
+      { type: 'task', task: tasks[0] },
+      { type: 'divider', kind: 'upcoming' },
+      { type: 'task', task: tasks[1] },
+    ]);
   });
 
-  it('places the divider at the end when everything is overdue', () => {
+  it('places the Today divider at the end, with no Upcoming divider, when everything is overdue', () => {
     const tasks = [task({ dueDate: '2026-08-19' }), task({ dueDate: '2026-08-20' })];
-    const rows = withTodayDivider(tasks, today);
-    expect(rows[rows.length - 1]).toEqual({ type: 'divider' });
-    expect(rows).toHaveLength(3);
+    const rows = withListDividers(tasks, today);
+    expect(rows).toEqual([
+      { type: 'task', task: tasks[0] },
+      { type: 'task', task: tasks[1] },
+      { type: 'divider', kind: 'today' },
+    ]);
   });
 
-  it('places the divider between overdue and current/future tasks', () => {
+  it('places Today between overdue and current tasks, and Upcoming before future tasks', () => {
     const tasks = [
       task({ dueDate: '2026-08-19' }),
       task({ dueDate: '2026-08-20' }),
       task({ dueDate: '2026-08-21' }),
       task({ dueDate: '2026-08-25' }),
     ];
-    const rows = withTodayDivider(tasks, today);
-    expect(rows[2]).toEqual({ type: 'divider' });
+    const rows = withListDividers(tasks, today);
+    expect(rows[2]).toEqual({ type: 'divider', kind: 'today' });
     expect(rows[0]).toMatchObject({ type: 'task', task: { dueDate: '2026-08-19' } });
     expect(rows[3]).toMatchObject({ type: 'task', task: { dueDate: '2026-08-21' } });
+    expect(rows[4]).toEqual({ type: 'divider', kind: 'upcoming' });
+    expect(rows[5]).toMatchObject({ type: 'task', task: { dueDate: '2026-08-25' } });
   });
 
-  it('places the divider at the top for an empty list', () => {
-    const rows = withTodayDivider([], today);
-    expect(rows).toEqual([{ type: 'divider' }]);
+  it('places the Today divider at the top for an empty list, with no Upcoming divider', () => {
+    const rows = withListDividers([], today);
+    expect(rows).toEqual([{ type: 'divider', kind: 'today' }]);
+  });
+
+  it('inserts an emptyToday row between Today and Upcoming when nothing is due today but a future task exists', () => {
+    const tasks = [task({ dueDate: '2026-08-19' }), task({ dueDate: '2026-08-25' })];
+    const rows = withListDividers(tasks, today);
+    expect(rows).toEqual([
+      { type: 'task', task: tasks[0] },
+      { type: 'divider', kind: 'today' },
+      { type: 'emptyToday' },
+      { type: 'divider', kind: 'upcoming' },
+      { type: 'task', task: tasks[1] },
+    ]);
+  });
+
+  it('has no future tasks and nothing due today -> just the Today divider, no emptyToday row', () => {
+    const tasks = [task({ dueDate: '2026-08-19' })];
+    const rows = withListDividers(tasks, today);
+    expect(rows).toEqual([{ type: 'task', task: tasks[0] }, { type: 'divider', kind: 'today' }]);
   });
 });

@@ -1,7 +1,9 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { deleteTask, restoreTask, setTaskCompleted } from '@/db/mutations';
+import { deleteTask, restoreTask, setTaskStatus } from '@/db/mutations';
+import { useSettings } from '@/hooks/useSettings';
+import { nextStatus } from '@/lib/status';
 import type { RowAnchor, TaskWithCategory } from '@/lib/types';
 
 const UNDO_WINDOW_MS = 5000;
@@ -17,6 +19,7 @@ interface MenuState {
 // this state per screen.
 export function useTaskRowActions() {
   const router = useRouter();
+  const { tapCyclesStatus } = useSettings();
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [pendingUndo, setPendingUndo] = useState<TaskWithCategory | null>(null);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -31,8 +34,15 @@ export function useTaskRowActions() {
     };
   }, []);
 
-  async function toggleComplete(task: TaskWithCategory) {
-    await setTaskCompleted(task.id, !task.completed);
+  async function cycleStatus(task: TaskWithCategory) {
+    await setTaskStatus(task.id, nextStatus(task.status, tapCyclesStatus));
+  }
+
+  // Swipe is a direct done/not-done toggle, always — unlike a tap, it never
+  // respects the cycle setting. A big deliberate gesture maps to a big
+  // deliberate outcome: mark done, or undo a done task back to todo.
+  async function swipeComplete(task: TaskWithCategory) {
+    await setTaskStatus(task.id, nextStatus(task.status, false));
   }
 
   function openMenu(task: TaskWithCategory, anchor: RowAnchor) {
@@ -93,7 +103,8 @@ export function useTaskRowActions() {
 
   return {
     menu,
-    toggleComplete,
+    cycleStatus,
+    swipeComplete,
     openMenu,
     closeMenu,
     editTask,

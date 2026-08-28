@@ -2,10 +2,11 @@ import { eq } from 'drizzle-orm';
 import { randomUUID } from 'expo-crypto';
 
 import { cancelTaskReminder, syncTaskReminder } from '@/lib/notifications';
+import type { TaskStatus } from '@/lib/status';
 import type { TaskRecord } from '@/lib/types';
 
 import { db } from './client';
-import { categories, tasks } from './schema';
+import { categories, settings, tasks } from './schema';
 
 export interface TaskInput {
   title: string;
@@ -23,7 +24,7 @@ export interface TaskInput {
 // reminder orphaned for a task that was just edited, completed, or deleted.
 export async function createTask(input: TaskInput): Promise<string> {
   const id = randomUUID();
-  const row = db.insert(tasks).values({ id, completed: false, ...input }).returning().get();
+  const row = db.insert(tasks).values({ id, status: 'todo', ...input }).returning().get();
   await syncTaskReminder(row);
   return id;
 }
@@ -33,10 +34,10 @@ export async function updateTask(id: string, input: TaskInput): Promise<void> {
   await syncTaskReminder(row);
 }
 
-export async function setTaskCompleted(id: string, completed: boolean): Promise<void> {
-  const row = db.update(tasks).set({ completed }).where(eq(tasks.id, id)).returning().get();
+export async function setTaskStatus(id: string, status: TaskStatus): Promise<void> {
+  const row = db.update(tasks).set({ status }).where(eq(tasks.id, id)).returning().get();
   // A reminder for a task already marked done is pure noise — syncTaskReminder
-  // cancels it; un-completing restores it if its fire time is still ahead.
+  // cancels it; cycling off done restores it if its fire time is still ahead.
   await syncTaskReminder(row);
 }
 
@@ -92,4 +93,11 @@ export async function deleteCategory(id: string, mode: CategoryDeleteMode): Prom
   } else {
     db.delete(categories).where(eq(categories.id, id)).run();
   }
+}
+
+export function setSetting(key: string, value: string): void {
+  db.insert(settings)
+    .values({ key, value })
+    .onConflictDoUpdate({ target: settings.key, set: { value } })
+    .run();
 }

@@ -10,11 +10,13 @@ import { fonts, fontSize } from '@/theme/typography';
 
 interface Props {
   task: TaskWithCategory;
-  onToggleComplete: () => void;
   onPress: () => void;
 }
 
-export function TaskRow({ task, onToggleComplete, onPress }: Props) {
+// Tapping the row cycles its status (src/lib/status.ts, src/hooks/useTaskRowActions.ts);
+// editing now lives behind long-press -> the Edit/Delete context menu. The
+// checkbox is a status indicator, not its own tap target.
+export function TaskRow({ task, onPress }: Props) {
   // Always show the due date, not just the time — this list merges every
   // date together, and a row's position relative to the today-divider isn't
   // enough on its own to tell a future task from one due today.
@@ -23,13 +25,19 @@ export function TaskRow({ task, onToggleComplete, onPress }: Props) {
     : formatDueDateShort(task.dueDate);
 
   return (
-    <Pressable onPress={onPress} style={styles.row}>
-      <Pressable
-        onPress={onToggleComplete}
-        hitSlop={10}
-        style={[styles.checkbox, task.completed && styles.checkboxChecked]}>
-        {task.completed && <Check size={14} color={colors.bgBase} strokeWidth={3} />}
-      </Pressable>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+      android_ripple={{ color: colors.borderSubtle }}>
+      <View
+        style={[
+          styles.checkbox,
+          task.status === 'active' && styles.checkboxActive,
+          task.status === 'done' && styles.checkboxChecked,
+        ]}>
+        {task.status === 'done' && <Check size={14} color={colors.bgBase} strokeWidth={3} />}
+        {task.status === 'active' && <View style={styles.checkboxActiveDot} />}
+      </View>
 
       {task.icon && (
         <View style={styles.taskIcon}>
@@ -39,7 +47,7 @@ export function TaskRow({ task, onToggleComplete, onPress }: Props) {
 
       <View style={styles.content}>
         <Text
-          style={[styles.title, task.completed && styles.titleCompleted]}
+          style={[styles.title, task.status === 'done' && styles.titleCompleted]}
           numberOfLines={1}>
           {task.title}
         </Text>
@@ -66,6 +74,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgSurface,
     borderRadius: radius.card,
   },
+  rowPressed: {
+    backgroundColor: colors.bgSurfaceRaised,
+  },
   checkbox: {
     width: 24,
     height: 24,
@@ -74,6 +85,15 @@ const styles = StyleSheet.create({
     borderColor: colors.borderSubtle,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  checkboxActive: {
+    borderColor: colors.accentPrimary,
+  },
+  checkboxActiveDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 3,
+    backgroundColor: colors.accentPrimary,
   },
   checkboxChecked: {
     backgroundColor: colors.accentPrimary,

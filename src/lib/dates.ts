@@ -1,4 +1,4 @@
-import { addDays, addMonths, eachDayOfInterval, endOfMonth, format, startOfMonth, startOfWeek, subMonths } from 'date-fns';
+import { addDays, addMonths, eachDayOfInterval, format, startOfMonth, startOfWeek, subMonths } from 'date-fns';
 
 export const DATE_FORMAT = 'yyyy-MM-dd';
 
@@ -80,15 +80,6 @@ export function weekdayAbbr(date: Date): string {
   return WEEKDAY_ABBR[date.getDay()];
 }
 
-// The continuous run of 'yyyy-MM-dd' strings from `monthsBack` months before
-// `anchor`'s month through `monthsForward` months after it — the day list
-// backing Week view's continuous scroll (no prev/next pagination).
-export function continuousDayRange(anchor: Date, monthsBack: number, monthsForward: number): string[] {
-  const start = startOfMonth(subMonths(anchor, monthsBack));
-  const end = endOfMonth(addMonths(anchor, monthsForward));
-  return eachDayOfInterval({ start, end }).map(toDateString);
-}
-
 // The first-of-month Dates from `monthsBack` months before `anchor` through
 // `monthsForward` months after it — Month view's continuous scroll.
 export function continuousMonthRange(anchor: Date, monthsBack: number, monthsForward: number): Date[] {
@@ -98,4 +89,41 @@ export function continuousMonthRange(anchor: Date, monthsBack: number, monthsFor
     months.push(addMonths(start, i));
   }
   return months;
+}
+
+// The week-start Dates from `weeksBack` weeks before `anchor`'s week through
+// `weeksForward` weeks after it — Week view's list-of-weeks continuous scroll.
+// Parallels continuousMonthRange exactly, one level finer-grained.
+export function continuousWeekRange(anchor: Date, weeksBack: number, weeksForward: number): Date[] {
+  const start = addDays(startOfWeek(anchor, { weekStartsOn: 0 }), -7 * weeksBack);
+  const weeks: Date[] = [];
+  for (let i = 0; i <= weeksBack + weeksForward; i++) {
+    weeks.push(addDays(start, 7 * i));
+  }
+  return weeks;
+}
+
+// "Aug 24 – 30" (same month) / "Aug 31 – Sep 6" (crosses a month) /
+// "Dec 29, 2026 – Jan 4, 2027" (crosses a year, rare but possible) — the
+// week-list row label. Always built from weekDays() so it can never disagree
+// with the 7 dates that actually back the row's task count.
+export function formatWeekRangeLabel(weekStart: Date, weekStartsOn: 0 | 1 = 0): string {
+  const days = weekDays(weekStart, weekStartsOn);
+  const start = parseDateString(days[0]);
+  const end = parseDateString(days[6]);
+
+  if (start.getFullYear() !== end.getFullYear()) {
+    return `${format(start, 'MMM d, yyyy')} – ${format(end, 'MMM d, yyyy')}`;
+  }
+  if (start.getMonth() !== end.getMonth()) {
+    return `${format(start, 'MMM d')} – ${format(end, 'MMM d')}`;
+  }
+  return `${format(start, 'MMM d')} – ${format(end, 'd')}`;
+}
+
+// Sums a per-date count map (e.g. from useTaskCountsInRange) over an
+// arbitrary list of 'yyyy-MM-dd' keys — pulled out of the week-list view so
+// the aggregation itself is unit-testable independent of React/FlatList.
+export function sumTaskCounts(dayCounts: Record<string, number>, dateStrs: string[]): number {
+  return dateStrs.reduce((sum, d) => sum + (dayCounts[d] ?? 0), 0);
 }
