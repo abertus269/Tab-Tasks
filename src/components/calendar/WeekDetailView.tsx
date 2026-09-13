@@ -6,18 +6,19 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SwipeableTaskRow } from '@/components/SwipeableTaskRow';
 import { useTasksInRange } from '@/hooks/useTasks';
 import { formatWeekRangeLabel, parseDateString, todayString, weekDays, weekdayAbbr } from '@/lib/dates';
-import type { RowAnchor, TaskWithCategory } from '@/lib/types';
+import type { CompleteBehavior, RegisterRowExit, RowAnchor, TaskWithCategory } from '@/lib/types';
 import { colors, spacing } from '@/theme/tokens';
 import { fonts, fontSize } from '@/theme/typography';
 
 interface Props {
   weekStart: Date;
   onBack: () => void;
-  onSwipeComplete: (task: TaskWithCategory) => void;
+  completeBehavior: CompleteBehavior;
+  onComplete: (task: TaskWithCategory) => void;
   onDelete: (task: TaskWithCategory) => void;
   onLongPress: (task: TaskWithCategory, anchor: RowAnchor) => void;
   onTaskPress: (task: TaskWithCategory) => void;
-  registerExit: (taskId: string, trigger: (direction: 1 | -1) => void) => () => void;
+  registerExit: RegisterRowExit;
 }
 
 interface DayItem {
@@ -33,7 +34,8 @@ interface DayItem {
 export function WeekDetailView({
   weekStart,
   onBack,
-  onSwipeComplete,
+  completeBehavior,
+  onComplete,
   onDelete,
   onLongPress,
   onTaskPress,
@@ -62,7 +64,8 @@ export function WeekDetailView({
           <DayBlock
             key={item.date}
             item={item}
-            onSwipeComplete={onSwipeComplete}
+            completeBehavior={completeBehavior}
+            onComplete={onComplete}
             onDelete={onDelete}
             onLongPress={onLongPress}
             onTaskPress={onTaskPress}
@@ -76,14 +79,15 @@ export function WeekDetailView({
 
 interface DayBlockProps {
   item: DayItem;
-  onSwipeComplete: (task: TaskWithCategory) => void;
+  completeBehavior: CompleteBehavior;
+  onComplete: (task: TaskWithCategory) => void;
   onDelete: (task: TaskWithCategory) => void;
   onLongPress: (task: TaskWithCategory, anchor: RowAnchor) => void;
   onTaskPress: (task: TaskWithCategory) => void;
-  registerExit: (taskId: string, trigger: (direction: 1 | -1) => void) => () => void;
+  registerExit: RegisterRowExit;
 }
 
-function DayBlock({ item, onSwipeComplete, onDelete, onLongPress, onTaskPress, registerExit }: DayBlockProps) {
+function DayBlock({ item, completeBehavior, onComplete, onDelete, onLongPress, onTaskPress, registerExit }: DayBlockProps) {
   const date = parseDateString(item.date);
   const isToday = item.date === todayString();
   const label = `${weekdayAbbr(date)} · ${format(date, 'MMM d')}${isToday ? ' · Today' : ''}`;
@@ -98,8 +102,9 @@ function DayBlock({ item, onSwipeComplete, onDelete, onLongPress, onTaskPress, r
           <SwipeableTaskRow
             key={task.id}
             task={task}
+            completeBehavior={completeBehavior}
             onPress={() => onTaskPress(task)}
-            onSwipeComplete={onSwipeComplete}
+            onComplete={onComplete}
             onDelete={onDelete}
             onLongPress={onLongPress}
             registerExit={registerExit}

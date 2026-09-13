@@ -7,27 +7,30 @@ import { EmptyState } from '@/components/EmptyState';
 import { SwipeableTaskRow } from '@/components/SwipeableTaskRow';
 import { useTasksInRange } from '@/hooks/useTasks';
 import { toDateString } from '@/lib/dates';
-import type { RowAnchor, TaskWithCategory } from '@/lib/types';
+import type { CompleteBehavior, RegisterRowExit, RowAnchor, TaskWithCategory } from '@/lib/types';
 import { spacing } from '@/theme/tokens';
 
 interface Props {
   anchorDate: Date;
   onNavigate: (date: Date) => void;
-  onSwipeComplete: (task: TaskWithCategory) => void;
+  completeBehavior: CompleteBehavior;
+  onComplete: (task: TaskWithCategory) => void;
   onDelete: (task: TaskWithCategory) => void;
   onLongPress: (task: TaskWithCategory, anchor: RowAnchor) => void;
   onTaskPress: (task: TaskWithCategory) => void;
   onAddTask: () => void;
-  registerExit: (taskId: string, trigger: (direction: 1 | -1) => void) => () => void;
+  registerExit: RegisterRowExit;
 }
 
 // SPEC.md §5.1 — vertical agenda for a single day, same row style as Tasks tab.
 // Also the Calendar tab's Add Task entry point (SPEC.md §3 requires one
-// reachable from both tabs).
+// reachable from both tabs). Always rendered with completeBehavior='toggle'
+// (calendar.tsx) — Calendar keeps showing done tasks, struck through.
 export function DayView({
   anchorDate,
   onNavigate,
-  onSwipeComplete,
+  completeBehavior,
+  onComplete,
   onDelete,
   onLongPress,
   onTaskPress,
@@ -51,8 +54,9 @@ export function DayView({
         renderItem={({ item }) => (
           <SwipeableTaskRow
             task={item}
+            completeBehavior={completeBehavior}
             onPress={() => onTaskPress(item)}
-            onSwipeComplete={onSwipeComplete}
+            onComplete={onComplete}
             onDelete={onDelete}
             onLongPress={onLongPress}
             registerExit={registerExit}

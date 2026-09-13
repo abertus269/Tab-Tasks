@@ -2,16 +2,17 @@ import { useState } from 'react';
 
 import { WeekDetailView } from './WeekDetailView';
 import { WeekListView } from './WeekListView';
-import type { RowAnchor, TaskWithCategory } from '@/lib/types';
+import type { CompleteBehavior, RegisterRowExit, RowAnchor, TaskWithCategory } from '@/lib/types';
 
 interface Props {
   anchorDate: Date;
   onNavigate: (date: Date) => void;
-  onSwipeComplete: (task: TaskWithCategory) => void;
+  completeBehavior: CompleteBehavior;
+  onComplete: (task: TaskWithCategory) => void;
   onDelete: (task: TaskWithCategory) => void;
   onLongPress: (task: TaskWithCategory, anchor: RowAnchor) => void;
   onTaskPress: (task: TaskWithCategory) => void;
-  registerExit: (taskId: string, trigger: (direction: 1 | -1) => void) => () => void;
+  registerExit: RegisterRowExit;
 }
 
 // SPEC.md §5.2, redesigned per user request: a list of week rows (date range
@@ -22,7 +23,16 @@ interface Props {
 // new CalendarMode, mirroring how TaskFormScreen's create/edit split lives
 // inside one route rather than two; expo-router keeps this tab mounted
 // across tab switches, so leaving and returning to a week's detail is free.
-export function WeekView({ anchorDate, onNavigate, onSwipeComplete, onDelete, onLongPress, onTaskPress, registerExit }: Props) {
+export function WeekView({
+  anchorDate,
+  onNavigate,
+  completeBehavior,
+  onComplete,
+  onDelete,
+  onLongPress,
+  onTaskPress,
+  registerExit,
+}: Props) {
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date | null>(null);
 
   if (selectedWeekStart) {
@@ -30,7 +40,8 @@ export function WeekView({ anchorDate, onNavigate, onSwipeComplete, onDelete, on
       <WeekDetailView
         weekStart={selectedWeekStart}
         onBack={() => setSelectedWeekStart(null)}
-        onSwipeComplete={onSwipeComplete}
+        completeBehavior={completeBehavior}
+        onComplete={onComplete}
         onDelete={onDelete}
         onLongPress={onLongPress}
         onTaskPress={onTaskPress}

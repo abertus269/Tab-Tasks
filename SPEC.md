@@ -71,19 +71,34 @@ A single "Add Task" entry point should be reachable from both tabs.
   `todo → active → done → todo` — via a togglable "cycle" setting (default
   on); with it off, a tap is a plain done/not-done toggle. Swiping a row
   either direction is a direct done/undone toggle, independent of that
-  setting. A `done` task gets a strikethrough and visually recedes (dimmed),
-  but stays in the list. Editing lives behind long-press → Edit in the
-  row's context menu.
+  setting. Editing lives behind long-press → Edit in the row's context menu.
+- **Completing a task removes it from this list** (superseding the original
+  "completed tasks stay visible, dimmed" behavior — see §9 and §10 "Swipe
+  completes and clears the row"): a completing swipe or tap plays a
+  slide-out + collapse exit animation, then writes `status: 'done'` and
+  shows a 5s "Task completed · Undo" toast that restores the previous
+  status. A trailing **Completed** filter chip (below) shows only done
+  tasks, struck through, with no Today/Upcoming dividers; tapping or
+  swiping a row there reopens it the same way, with a "Task reopened ·
+  Undo" toast.
 - Each row shows: checkbox-style status indicator · title · category chip ·
   due date/time · optional task icon.
-- Optional: category filter chips above the list to narrow the _view_ only —
-  this never changes the underlying merged sort order.
+- **Filter chips** above the list: All · one per category · Uncategorized ·
+  a trailing **Completed** chip. These narrow the _view_ only — they never
+  change the underlying merged sort order. Completed is a mode, mutually
+  exclusive with the others (there's no separate "show completed" toggle
+  layered on top of category filtering).
 
 ## 5. Calendar Tab
 
 One dataset, four ways to look at it, switched via a segmented control. The
 currently-viewed date persists across mode switches where it makes sense
 (e.g. Day→Week keeps you in the same week).
+
+Unlike the Tasks tab (§4), Day and Week's agendas keep showing done tasks in
+place — dimmed and struck through — since an agenda is a record of the day,
+not a working list. Swiping a row here just flips its status and springs
+back; it never leaves the list and there's no undo toast.
 
 ### 5.1 Day
 
@@ -112,7 +127,9 @@ year's Month view.
 ## 6. Task Create/Edit Form
 
 Fields: Title (required) · Due date (required) · Due time (optional) ·
-Description (optional) · Category (select or create) · Icon (Lucide picker).
+Description (optional) · Category (select or create) · Icon (Lucide picker —
+a curated ~100-icon set grouped into themed sections with headers, one
+searchable scrolling grid, matched by name or keyword).
 Actions: Save / Cancel / (Delete, when editing).
 
 ## 7. Persistence
@@ -143,8 +160,12 @@ Flagged for you to confirm or override before/while building:
   from each _category's_ icon (the literal reading of the brief). If you
   actually meant category-level icons only, that's a smaller, cleaner model
   — worth deciding before the icon picker gets built.
-- **Completed tasks:** assumes they stay visible (dimmed/struck-through)
-  rather than disappearing from the list, matching the reference screenshot.
+- **Completed tasks:** originally assumed they'd stay visible
+  (dimmed/struck-through) rather than disappearing from the list, matching
+  the reference screenshot. **Superseded on the user's explicit request** —
+  see §4/§10 "Swipe completes and clears the row": the Tasks tab now hides
+  done tasks behind a Completed filter chip. Calendar's Day/Week agendas
+  still follow the original assumption and show done tasks in place (§5).
 - **Reminders/notifications:** not mentioned in the original brief; shipped
   post-v1 via `expo-notifications` — see CLAUDE.md's Reminders section.
 - **Recurring tasks:** not mentioned — out of scope for v1, flagging only
@@ -182,7 +203,25 @@ Also make sure to use this indicator of completion
   and a checkmark icon (previously swipe deleted, in red with a bin icon; see §10/§11 "Swiping should
   be completed not deleted"). A partial drag springs back to rest. The ⋮ overflow button is gone —
   long-pressing a row opens an Edit/Delete menu anchored on the row itself, and Delete now lives only
-  there.
+  there. (On the Tasks tab the row now leaves the list on completion instead of staying struck
+  through in place — see "Swipe completes and clears the row" below.)
+
+- **Swipe completes and clears the row:** [X] On the Tasks tab, a completing swipe (or a tap that
+  crosses into `done` via the status cycle) now plays the same slide-out + collapse exit animation
+  a delete does, then writes the status and shows a "Task completed · Undo" toast (5s, restores the
+  previous status). A trailing **Completed** filter chip shows only done tasks, struck through, with
+  no Today/Upcoming dividers; reopening one there (tap or swipe) exits that view too, with a "Task
+  reopened · Undo" toast. Empty-state copy: "No completed tasks yet." for the Completed chip itself,
+  "All done." when every task in the current scope is done, otherwise the existing "No tasks yet." /
+  "No tasks in this category." Calendar's Day/Week agendas are unchanged by this — they keep showing
+  done tasks in place (§5).
+
+- **More icons:** [X] Grew the curated Lucide set from 45 to ~100 icons, grouped into themed
+  sections (General, Work & Study, Home, Health, Food & Drink, Travel, Fun & Hobbies, People &
+  Messages, Nature & Animals, Money, Tech). The icon picker (§6) now shows a section header per
+  group above its rows, still one searchable scrolling grid, matched by name or a small keyword
+  synonym list (e.g. "gym" finds the dumbbell icon). Kept cheap to scroll via fixed row/header
+  heights (`getItemLayout`) and memoized cells rather than by limiting the count.
 
 - **WIDGET:** [] Would be nice to see daily tasks if need to be done.
   And swiping on it completes the task and tapping on it goes into the app.
@@ -230,7 +269,8 @@ Also make sure to use this indicator of completion
   When I complete a task via swiping, make it green instead of red for deleting, maybe a check mark icon when swiping it away.
   Done: swiping either direction now marks a task done (or undoes an already-done task back to
   todo) with a lime-green backdrop and a checkmark icon, instead of deleting. Delete moved entirely
-  to long-press → Delete in the row's context menu.
+  to long-press → Delete in the row's context menu. (On the Tasks tab, completing a task now also
+  removes its row from the list — see §10 "Swipe completes and clears the row".)
 
 - **Today bar:** [X]
   I think the today bar appears that every task even for today and in the future appears to show that every task is for today which is not the case.

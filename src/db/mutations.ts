@@ -36,6 +36,11 @@ export async function updateTask(id: string, input: TaskInput): Promise<void> {
 
 export async function setTaskStatus(id: string, status: TaskStatus): Promise<void> {
   const row = db.update(tasks).set({ status }).where(eq(tasks.id, id)).returning().get();
+  // The Tasks tab's exit animation delays this write until ~320ms after the
+  // gesture that triggered it (SwipeableTaskRow's slide + collapse); if the
+  // task was deleted out from under it in that window, there's nothing left
+  // to sync a reminder for.
+  if (!row) return;
   // A reminder for a task already marked done is pure noise — syncTaskReminder
   // cancels it; cycling off done restores it if its fire time is still ahead.
   await syncTaskReminder(row);

@@ -42,7 +42,7 @@ date-range queries with a category join.
 
 Two entities, defined in `SPEC.md` §2:
 
-- **Task** — `id`, `title`, `dueDate` (required; drives *all* sorting and grouping), `dueTime?`, `description?`, `categoryId` (nullable), `icon?` (Lucide name), `completed`, `reminderMinutesBefore?` (null = no reminder; see Reminders below), `createdAt` (tie-breaking).
+- **Task** — `id`, `title`, `dueDate` (required; drives *all* sorting and grouping), `dueTime?`, `description?`, `categoryId` (nullable), `icon?` (Lucide name), `status` (`'todo' | 'active' | 'done'`, default `'todo'` — cycled by tapping the row, `src/lib/status.ts`), `reminderMinutesBefore?` (null = no reminder; see Reminders below), `createdAt` (tie-breaking).
 - **Category** — `id`, `name` (unique), `color` (hex), `icon?`. Full CRUD.
 
 One category per task. Tasks and categories each carry their own independent optional icon.
@@ -51,7 +51,7 @@ One category per task. Tasks and categories each carry their own independent opt
 
 - **One unified list, never per-category sections.** The Tasks tab merges every category into a single continuous list sorted ascending by `dueDate` then `dueTime`. Category filter chips narrow the *view* only — they must never re-sort or re-group the underlying merged order.
 - **Today divider.** A marker is inserted into the list at the current date: overdue above, today-and-later below. If nothing is overdue it sits at the very top. This is a derived list position, not a stored row.
-- **Completed tasks stay in the list**, dimmed and struck through. They are not filtered out.
+- **Done tasks leave the Tasks tab's list.** Swiping a row either direction, or tapping it to `done` (via the tap-cycle setting), plays an exit animation — slide out, then collapse (`SwipeableTaskRow`'s `completeBehavior="exit"`) — before the status write lands, and shows a 5s "Task completed · Undo" toast that restores the previous status. A trailing **Completed** filter chip (mutually exclusive with category chips, no Today/Upcoming dividers — `src/lib/filters.ts`) shows only done tasks, struck through; tapping or swiping one there reopens it the same way. **Calendar's Day/Week agendas still show done tasks in place**, dimmed and struck through — swiping there (`completeBehavior="toggle"`) just flips the status and springs back, no exit animation, no toast.
 - **Category deletion always prompts** — reassign the orphaned tasks to "Uncategorized" or delete them too. Default to reassigning; never silently delete tasks.
 - **One dataset, four calendar zoom levels** (Day / Week / Month / Year) over the same task data — no separate storage or shadow model per view. The viewed date persists across mode switches where meaningful (Day→Week stays in the same week).
 - **Local-first, no network.** No backend, no account, no sync. Data must survive app restarts *and* updates — schema migrations are a real concern, not a future one.
@@ -87,7 +87,7 @@ Full detail in `DESIGN.md`. The load-bearing parts:
 - **Dark mode only.** No light theme is specified — do not invent one.
 - **Tokens** (`DESIGN.md` §2), to be defined once and referenced everywhere rather than hardcoded: `bg-base` `#0D0D0D` · `bg-surface` `#1A1A1A` · `bg-surface-raised` `#232323` · `accent-primary` `#D6FF5C` (lime) · `accent-warm` `#FF9F45` · `text-primary` `#F5F5F5` · `text-secondary` `#9A9A9A` · `text-muted` `#5C5C5C` · `border-subtle` `#2A2A2A`.
 - **Three type roles, not one family:** bold geometric sans for headings/day labels, humanist sans for body/task titles, and monospace **only** for numbers — dates, times, counts, year numbers. Never set a full sentence in mono.
-- **Icons:** Lucide, outline only, 1.5–2px stroke. 16px inline, 20–24px nav, 28–32px picker/empty states. Category color variety comes from a curated 6–8 hue swatch, not free-form hex entry.
+- **Icons:** Lucide, outline only, 1.5–2px stroke. 16px inline, 20–24px nav, 28–32px picker/empty states. The curated set lives in `src/lib/icons.ts` as ~100 names grouped by theme (the picker renders one section header per group); keys are stored verbatim on tasks/categories, so a key must never be renamed or removed once shipped. Category color variety comes from a curated 6–8 hue swatch, not free-form hex entry.
 - **4px spacing base** (8/12/16/24/32); 16–20px radius on rows and cards; fully-rounded (999px) pills for category chips and filters.
 - **Add Task is an inline button at the bottom of the list, not a FAB** — a deliberate call in §6 to avoid an FAB competing with a two-tab bar.
 - **The Day/Week/Month/Year switcher is a segmented control under the Calendar header** — never a third layer of bottom navigation.
@@ -100,4 +100,4 @@ Component specs for the task row, today divider, day/week section header, year r
 Both specs flag unresolved decisions. Surface the relevant one *before* building the part it affects, not after.
 
 - **Visual direction is unconfirmed** (`DESIGN.md` §1). The system as written deliberately departs from the cartoony Fredoka One + Nunito look used across the user's other projects, because none of the three references were cartoony. The user may want it redone to match that established style; §2–3 (color, type) would change, layout and components in §6 would carry over unchanged.
-- **`SPEC.md` §9** lists five assumptions made on the user's behalf: task-level icons (vs. category-only), completed tasks staying visible, reminders out of scope, recurring tasks out of scope, and one category per task. Task-level icons and single-category-per-task are model changes that get expensive once the icon picker and schema exist. **Reminders have since been implemented** (see Reminders above) — recurring tasks and multi-category-per-task remain out of scope.
+- **`SPEC.md` §9** lists five assumptions made on the user's behalf: task-level icons (vs. category-only), completed tasks staying visible, reminders out of scope, recurring tasks out of scope, and one category per task. Task-level icons and single-category-per-task are model changes that get expensive once the icon picker and schema exist. **Reminders have since been implemented** (see Reminders above) — recurring tasks and multi-category-per-task remain out of scope. **The "completed tasks stay visible" assumption has since been overridden** on the user's explicit request — see the Behavioral invariants bullet above.

@@ -68,6 +68,9 @@ Suggested scale: Display 28–32 / Heading 20–22 / Body 15–16 / Caption 12�
 - Category chip = colored dot or filled rounded-square badge + Lucide glyph +
   name — a simplified, solid-color-and-line-icon version of reference #2's
   illustrated cards, so it stays buildable without a custom illustration set.
+- **Icon picker grid:** 5 columns of 56px cells (28px glyphs), grouped into
+  themed sections with a small caption-size header above each — one
+  searchable scrolling list, not a paged/tabbed picker.
 
 ## 6. Core Components
 
@@ -130,7 +133,12 @@ Not shown in any reference — keep it simple: muted icon + one line of
 
 - Checkbox completion: quick fill + checkmark draw-in, strikethrough
   animates in (~150–200ms).
-- Swipe-to-delete: standard reveal-and-confirm pattern.
+- Swipe-to-complete (Tasks tab): lime backdrop + checkmark reveal under the
+  drag, standard reveal-and-confirm pattern; past the ~40% threshold the row
+  slides fully off (180ms) then collapses (140ms) before the status write
+  and an undo toast — the same exit long-press → Delete replays. Calendar's
+  Day/Week agendas keep the reveal-and-confirm without the exit: the row
+  just springs back once the status flips.
 - Tab/view switches: simple crossfade or slide — the references are static
   mocks, so treat motion as a later layer, not a blocker.
 

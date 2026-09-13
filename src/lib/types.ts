@@ -33,3 +33,18 @@ export interface RowAnchor {
   width: number;
   height: number;
 }
+
+// SwipeableTaskRow's two swipe-to-complete personalities (src/hooks/useTaskRowActions.ts):
+// - 'exit'   (Tasks tab): a completed swipe/tap slides the row out and collapses it before
+//   the status write lands, since done tasks don't stay in that list.
+// - 'toggle' (Calendar Day/Week): a completed swipe flips the status in place and springs
+//   back, since done tasks stay visible (struck through) in the agenda views.
+export type CompleteBehavior = 'exit' | 'toggle';
+
+// Why a row's exit animation is ending — decides which callback fires when the
+// slide-out + collapse finishes (SwipeableTaskRow's runExit/registerExit).
+export type ExitReason = 'delete' | 'complete';
+
+export type RowExitTrigger = (direction: 1 | -1, reason: ExitReason) => void;
+
+export type RegisterRowExit = (taskId: string, trigger: RowExitTrigger) => () => void;

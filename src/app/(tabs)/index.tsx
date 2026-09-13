@@ -15,11 +15,11 @@ import { useCategories } from '@/hooks/useCategories';
 import { useTaskRowActions } from '@/hooks/useTaskRowActions';
 import { useAllTasks } from '@/hooks/useTasks';
 import { todayString } from '@/lib/dates';
-import { withListDividers } from '@/lib/ordering';
+import { COMPLETED_FILTER, emptyMessageFor, filterTasks, inCategoryScope, type FilterValue } from '@/lib/filters';
+import { type RenderRow, withListDividers } from '@/lib/ordering';
+import type { TaskWithCategory } from '@/lib/types';
 import { colors, spacing } from '@/theme/tokens';
 import { fonts, fontSize } from '@/theme/typography';
-
-type FilterValue = 'all' | 'uncategorized' | string;
 
 interface FilterOption {
   id: FilterValue;
@@ -32,7 +32,7 @@ export default function TasksScreen() {
   const router = useRouter();
   const allTasks = useAllTasks();
   const categories = useCategories();
-  const rowActions = useTaskRowActions();
+  const rowActions = useTaskRowActions({ completeBehavior: 'exit' });
   const [activeFilter, setActiveFilter] = useState<FilterValue>('all');
 
   const filterOptions: FilterOption[] = useMemo(
@@ -40,19 +40,31 @@ export default function TasksScreen() {
       { id: 'all', name: 'All' },
       ...categories.map((c) => ({ id: c.id, name: c.name, color: c.color, icon: c.icon })),
       { id: 'uncategorized', name: 'Uncategorized' },
+      { id: COMPLETED_FILTER, name: 'Completed', icon: 'circle-check' },
     ],
     [categories],
   );
 
   // The filter row narrows what's *rendered* only — it never re-sorts or
-  // re-groups the underlying merged list (SPEC.md §4).
-  const visibleTasks = useMemo(() => {
-    if (activeFilter === 'all') return allTasks;
-    if (activeFilter === 'uncategorized') return allTasks.filter((t) => t.categoryId === null);
-    return allTasks.filter((t) => t.categoryId === activeFilter);
-  }, [allTasks, activeFilter]);
+  // re-groups the underlying merged list (SPEC.md §4). Done tasks are
+  // excluded from every filter except 'completed', which shows only them
+  // (src/lib/filters.ts) — that's what makes a completed swipe/tap leave
+  // whichever view it was in.
+  const visibleTasks = useMemo(() => filterTasks(allTasks, activeFilter), [allTasks, activeFilter]);
 
-  const rows = useMemo(() => withListDividers(visibleTasks, todayString()), [visibleTasks]);
+  // A done list has no "due" structure, so the Completed view skips the
+  // Today/Upcoming dividers entirely — everywhere else keeps them.
+  const rows: RenderRow<TaskWithCategory>[] = useMemo(() => {
+    if (activeFilter === COMPLETED_FILTER) {
+      return visibleTasks.map((task) => ({ type: 'task', task }));
+    }
+    return withListDividers(visibleTasks, todayString());
+  }, [visibleTasks, activeFilter]);
+
+  const hasAnyInScope = useMemo(
+    () => allTasks.some((t) => inCategoryScope(t, activeFilter)),
+    [allTasks, activeFilter],
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -83,7 +95,7 @@ export default function TasksScreen() {
 
       {visibleTasks.length === 0 ? (
         <View style={styles.emptyWrap}>
-          <EmptyState message={activeFilter === 'all' ? 'No tasks yet.' : 'No tasks in this category.'} />
+          <EmptyState message={emptyMessageFor(activeFilter, hasAnyInScope)} />
           <AddTaskButton onPress={() => rowActions.openNewTask()} />
         </View>
       ) : (
@@ -101,8 +113,9 @@ export default function TasksScreen() {
             return (
               <SwipeableTaskRow
                 task={item.task}
+                completeBehavior={rowActions.completeBehavior}
                 onPress={() => rowActions.cycleStatus(item.task)}
-                onSwipeComplete={rowActions.swipeComplete}
+                onComplete={rowActions.completeTask}
                 onDelete={rowActions.deleteWithUndo}
                 onLongPress={rowActions.openMenu}
                 registerExit={rowActions.registerRowExit}
@@ -121,7 +134,7 @@ export default function TasksScreen() {
         onDelete={rowActions.confirmMenuDelete}
       />
 
-      <UndoToast visible={!!rowActions.pendingUndo} onUndo={rowActions.undoDelete} />
+      <UndoToast visible={!!rowActions.pendingUndo} message={rowActions.undoMessage} onUndo={rowActions.undo} />
     </SafeAreaView>
   );
 }

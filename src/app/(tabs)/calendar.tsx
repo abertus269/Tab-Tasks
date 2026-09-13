@@ -22,7 +22,7 @@ import { colors } from '@/theme/tokens';
 export default function CalendarScreen() {
   const [mode, setMode] = useState<CalendarMode>('day');
   const [anchorDate, setAnchorDate] = useState(new Date());
-  const rowActions = useTaskRowActions();
+  const rowActions = useTaskRowActions({ completeBehavior: 'toggle' });
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -32,7 +32,8 @@ export default function CalendarScreen() {
         <DayView
           anchorDate={anchorDate}
           onNavigate={setAnchorDate}
-          onSwipeComplete={rowActions.swipeComplete}
+          completeBehavior={rowActions.completeBehavior}
+          onComplete={rowActions.completeTask}
           onDelete={rowActions.deleteWithUndo}
           onLongPress={rowActions.openMenu}
           onTaskPress={rowActions.cycleStatus}
@@ -44,7 +45,8 @@ export default function CalendarScreen() {
         <WeekView
           anchorDate={anchorDate}
           onNavigate={setAnchorDate}
-          onSwipeComplete={rowActions.swipeComplete}
+          completeBehavior={rowActions.completeBehavior}
+          onComplete={rowActions.completeTask}
           onDelete={rowActions.deleteWithUndo}
           onLongPress={rowActions.openMenu}
           onTaskPress={rowActions.cycleStatus}
@@ -77,7 +79,7 @@ export default function CalendarScreen() {
         onDelete={rowActions.confirmMenuDelete}
       />
 
-      <UndoToast visible={!!rowActions.pendingUndo} onUndo={rowActions.undoDelete} />
+      <UndoToast visible={!!rowActions.pendingUndo} message={rowActions.undoMessage} onUndo={rowActions.undo} />
     </SafeAreaView>
   );
 }

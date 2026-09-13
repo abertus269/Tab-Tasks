@@ -19,16 +19,21 @@ import Animated, {
 
 import { TaskRow } from '@/components/TaskRow';
 import { shouldCompleteOnRelease, swipeProgress } from '@/lib/swipe';
-import type { RowAnchor, TaskWithCategory } from '@/lib/types';
+import type { CompleteBehavior, ExitReason, RegisterRowExit, RowAnchor, TaskWithCategory } from '@/lib/types';
 import { colors, radius, spacing } from '@/theme/tokens';
 
 interface Props {
   task: TaskWithCategory;
+  // 'exit' (Tasks tab): a completed swipe/tap slides the row out and
+  // collapses it before the status write lands — done tasks don't stay in
+  // that list. 'toggle' (Calendar Day/Week): a completed swipe flips the
+  // status in place and springs back — done tasks stay visible there.
+  completeBehavior: CompleteBehavior;
   onPress: () => void;
-  onSwipeComplete: (task: TaskWithCategory) => void;
+  onComplete: (task: TaskWithCategory) => void;
   onDelete: (task: TaskWithCategory) => void;
   onLongPress: (task: TaskWithCategory, anchor: RowAnchor) => void;
-  registerExit: (taskId: string, trigger: (direction: 1 | -1) => void) => () => void;
+  registerExit: RegisterRowExit;
 }
 
 const EXIT_DURATION = 180;
@@ -46,12 +51,23 @@ const EXIT_OVERSHOOT = 32;
 //
 // A completed swipe marks the task done (or undoes it back to todo if it was
 // already done — swipe is a direct toggle, independent of the tap-cycle
-// setting) and springs the row back to rest; the task stays in the list,
-// same as tapping it to done would. Deleting no longer lives on the swipe —
-// it's long-press → Delete only. `registerExit` still lets that Delete
-// button replay the slide-out + collapse removal animation on the specific
-// row it targets.
-export function SwipeableTaskRow({ task, onPress, onSwipeComplete, onDelete, onLongPress, registerExit }: Props) {
+// setting). What happens to the row after depends on `completeBehavior`:
+// in 'toggle' mode it springs back to rest and stays, struck through; in
+// 'exit' mode it plays the same slide-out + collapse animation as a delete
+// (see `runExit`) before the status write lands, since the Tasks tab hides
+// done tasks behind the Completed filter. Deleting always plays that same
+// exit animation regardless of mode — it's long-press → Delete only, and
+// `registerExit` lets that button (or a tap that crosses the done boundary
+// in 'exit' mode, via useTaskRowActions) replay it on this specific row.
+export function SwipeableTaskRow({
+  task,
+  completeBehavior,
+  onPress,
+  onComplete,
+  onDelete,
+  onLongPress,
+  registerExit,
+}: Props) {
   const measureRef = useRef<View>(null);
   const [rowWidth, setRowWidth] = useState(0);
   const [rowHeight, setRowHeight] = useState<number | null>(null);
@@ -59,13 +75,23 @@ export function SwipeableTaskRow({ task, onPress, onSwipeComplete, onDelete, onL
   const translateX = useSharedValue(0);
   const rowOpacity = useSharedValue(1);
   const rowScaleHeight = useSharedValue(1);
+  // Guards against a second exit trigger (e.g. an accessibility action, or a
+  // tap-to-complete racing a long-press Delete) restarting the animation or
+  // firing finishExit twice mid-flight.
+  const exiting = useSharedValue(false);
 
-  const finishDelete = useCallback(() => {
-    onDelete(task);
-  }, [onDelete, task]);
+  const finishExit = useCallback(
+    (reason: ExitReason) => {
+      if (reason === 'delete') onDelete(task);
+      else onComplete(task);
+    },
+    [onDelete, onComplete, task],
+  );
 
   const runExit = useCallback(
-    (direction: 1 | -1) => {
+    (direction: 1 | -1, reason: ExitReason) => {
+      if (exiting.value) return;
+      exiting.value = true;
       translateX.value = withTiming(
         direction * (rowWidth + EXIT_OVERSHOOT),
         { duration: EXIT_DURATION },
@@ -73,12 +99,12 @@ export function SwipeableTaskRow({ task, onPress, onSwipeComplete, onDelete, onL
           if (!finished) return;
           rowOpacity.value = withTiming(0, { duration: COLLAPSE_DURATION });
           rowScaleHeight.value = withTiming(0, { duration: COLLAPSE_DURATION }, (done) => {
-            if (done) runOnJS(finishDelete)();
+            if (done) runOnJS(finishExit)(reason);
           });
         },
       );
     },
-    [translateX, rowWidth, rowOpacity, rowScaleHeight, finishDelete],
+    [exiting, translateX, rowWidth, rowOpacity, rowScaleHeight, finishExit],
   );
 
   useEffect(() => registerExit(task.id, runExit), [registerExit, task.id, runExit]);
@@ -89,9 +115,9 @@ export function SwipeableTaskRow({ task, onPress, onSwipeComplete, onDelete, onL
     });
   }, [task, onLongPress]);
 
-  const handleSwipeComplete = useCallback(() => {
-    onSwipeComplete(task);
-  }, [task, onSwipeComplete]);
+  const handleComplete = useCallback(() => {
+    onComplete(task);
+  }, [task, onComplete]);
 
   const pan = Gesture.Pan()
     .activeOffsetX([-12, 12])
@@ -100,9 +126,17 @@ export function SwipeableTaskRow({ task, onPress, onSwipeComplete, onDelete, onL
       translateX.value = e.translationX;
     })
     .onEnd((e) => {
+      const completing = shouldCompleteOnRelease(e.translationX, e.velocityX, rowWidth);
+      if (completing && completeBehavior === 'exit') {
+        // Let the row keep sliding in the direction it was already being
+        // dragged, straight into the exit animation, instead of snapping
+        // back to rest first.
+        runOnJS(runExit)(e.translationX >= 0 ? 1 : -1, 'complete');
+        return;
+      }
       translateX.value = withSpring(0, { damping: 20, stiffness: 220 });
-      if (shouldCompleteOnRelease(e.translationX, e.velocityX, rowWidth)) {
-        runOnJS(handleSwipeComplete)();
+      if (completing) {
+        runOnJS(handleComplete)();
       }
     });
 
@@ -157,10 +191,18 @@ export function SwipeableTaskRow({ task, onPress, onSwipeComplete, onDelete, onL
         <Animated.View
           style={rowStyle}
           onLayout={(e) => setRowWidth(e.nativeEvent.layout.width)}
-          accessibilityActions={[{ name: 'activate', label: 'Cycle status' }, { name: 'delete', label: 'Delete' }]}
+          accessibilityActions={[
+            { name: 'activate', label: 'Cycle status' },
+            { name: 'complete', label: task.status === 'done' ? 'Mark not done' : 'Mark done' },
+            { name: 'delete', label: 'Delete' },
+          ]}
           onAccessibilityAction={(e) => {
             if (e.nativeEvent.actionName === 'activate') onPress();
-            if (e.nativeEvent.actionName === 'delete') runExit(1);
+            if (e.nativeEvent.actionName === 'complete') {
+              if (completeBehavior === 'exit') runExit(1, 'complete');
+              else onComplete(task);
+            }
+            if (e.nativeEvent.actionName === 'delete') runExit(1, 'delete');
           }}>
           <View ref={measureRef} collapsable={false}>
             <TaskRow task={task} onPress={onPress} />
