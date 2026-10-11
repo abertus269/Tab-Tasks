@@ -1,15 +1,16 @@
 import { useRouter } from 'expo-router';
 import { Pencil, Plus, Trash2, X } from 'lucide-react-native';
 import { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CategoryEditSheet } from '@/components/CategoryEditSheet';
 import { DeleteCategoryPrompt } from '@/components/DeleteCategoryPrompt';
 import { DynamicIcon } from '@/components/DynamicIcon';
+import { IconButton } from '@/components/IconButton';
 import { useCategories } from '@/hooks/useCategories';
 import type { CategoryRecord } from '@/lib/types';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { colors, iconSize, radius, spacing } from '@/theme/tokens';
 import { fonts, fontSize } from '@/theme/typography';
 
 type EditTarget = CategoryRecord | 'new' | null;
@@ -24,13 +25,17 @@ export default function CategoryManagerScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <X size={22} color={colors.textSecondary} strokeWidth={1.75} />
-        </Pressable>
-        <Text style={styles.headerTitle}>Categories</Text>
-        <Pressable onPress={() => setEditing('new')} hitSlop={8}>
-          <Plus size={22} color={colors.accentPrimary} strokeWidth={2.5} />
-        </Pressable>
+        <IconButton icon={X} label="Close" onPress={() => router.back()} />
+        <Text style={styles.headerTitle} accessibilityRole="header">
+          Categories
+        </Text>
+        <IconButton
+          icon={Plus}
+          label="New category"
+          onPress={() => setEditing('new')}
+          color={colors.accentPrimary}
+          strokeWidth={2.25}
+        />
       </View>
 
       <FlatList
@@ -47,12 +52,19 @@ export default function CategoryManagerScreen() {
               <Text style={styles.name} numberOfLines={1}>
                 {item.name}
               </Text>
-              <Pressable onPress={() => setEditing(item)} hitSlop={8} style={styles.iconAction}>
-                <Pencil size={16} color={colors.textSecondary} strokeWidth={1.75} />
-              </Pressable>
-              <Pressable onPress={() => setDeleting(item)} hitSlop={8} style={styles.iconAction}>
-                <Trash2 size={16} color={colors.danger} strokeWidth={1.75} />
-              </Pressable>
+              <IconButton
+                icon={Pencil}
+                label={`Edit ${item.name}`}
+                onPress={() => setEditing(item)}
+                size={iconSize.inline + 2}
+              />
+              <IconButton
+                icon={Trash2}
+                label={`Delete ${item.name}`}
+                onPress={() => setDeleting(item)}
+                color={colors.danger}
+                size={iconSize.inline + 2}
+              />
             </View>
           );
         }}
@@ -80,8 +92,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    // IconButton's 48dp target already carries ~13dp of inset around the glyph.
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs,
   },
   headerTitle: {
     fontFamily: fonts.heading,
@@ -101,8 +114,9 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     backgroundColor: colors.bgSurface,
     borderRadius: radius.card,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingLeft: spacing.lg,
+    paddingRight: spacing.xs,
+    paddingVertical: spacing.xs,
   },
   colorDot: {
     width: 28,
@@ -116,9 +130,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: fontSize.body,
     color: colors.textPrimary,
-  },
-  iconAction: {
-    padding: spacing.xs,
   },
   emptyText: {
     fontFamily: fonts.body,

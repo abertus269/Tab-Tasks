@@ -7,15 +7,16 @@ interface Props {
   kind: 'today' | 'upcoming';
 }
 
-// DESIGN.md §6 — a thin rule spanning the list width with a small centered
-// label. "Today" keeps the original lime treatment (the dominant marker in
-// the list); "Upcoming" is quieter (border-subtle/text-secondary) so it
-// reads as secondary structure, not a second "today".
+// DESIGN.md §6 — the list's one landmark. "Today" is the app's anchor point
+// (PRODUCT.md: today first), so it reads at full strength: a solid lime
+// rule with the label left-aligned like a section heading, where a scanning
+// eye starts. It used to be a centered mono word on a 35%-opacity rule that
+// barely registered. "Upcoming" keeps the same shape, quieter, so it reads
+// as secondary structure, not a second "today".
 export function ListDivider({ kind }: Props) {
   const isToday = kind === 'today';
   return (
-    <View style={styles.container}>
-      <View style={[styles.line, isToday ? styles.lineToday : styles.lineUpcoming]} />
+    <View style={styles.container} accessibilityRole="header">
       <Text style={[styles.label, isToday ? styles.labelToday : styles.labelUpcoming]}>
         {isToday ? 'Today' : 'Upcoming'}
       </Text>
@@ -39,34 +40,36 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.sm,
+    gap: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xs,
   },
   line: {
     flex: 1,
-    height: 1,
   },
   lineToday: {
+    height: 2,
+    borderRadius: 1,
     backgroundColor: colors.accentPrimary,
-    opacity: 0.35,
   },
   lineUpcoming: {
+    height: 1,
     backgroundColor: colors.borderSubtle,
   },
   label: {
-    fontFamily: fonts.mono,
-    fontSize: fontSize.caption,
-    letterSpacing: 0.5,
+    fontFamily: fonts.headingSemiBold,
   },
   labelToday: {
+    fontSize: fontSize.body + 2,
     color: colors.accentPrimary,
   },
   labelUpcoming: {
+    fontSize: fontSize.body,
     color: colors.textSecondary,
   },
   emptyContainer: {
-    paddingVertical: spacing.sm,
-    alignItems: 'center',
+    paddingVertical: spacing.md,
+    alignItems: 'flex-start',
   },
   emptyLabel: {
     fontFamily: fonts.body,

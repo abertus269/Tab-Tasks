@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, radius, spacing } from '@/theme/tokens';
+import { colors, minTouchTarget, radius, spacing } from '@/theme/tokens';
 import { fonts, fontSize } from '@/theme/typography';
 
 export type CalendarMode = 'day' | 'week' | 'month' | 'year';
@@ -21,13 +21,15 @@ interface Props {
 // third layer of bottom navigation.
 export function SegmentedControl({ mode, onChange }: Props) {
   return (
-    <View style={styles.track}>
+    <View style={styles.track} accessibilityRole="tablist">
       {OPTIONS.map((option) => {
         const selected = option.mode === mode;
         return (
           <Pressable
             key={option.mode}
             onPress={() => onChange(option.mode)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
             style={[styles.segment, selected && styles.segmentSelected]}>
             <Text style={[styles.label, selected && styles.labelSelected]}>{option.label}</Text>
           </Pressable>
@@ -42,15 +44,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: colors.bgSurface,
     borderRadius: radius.pill,
-    padding: 3,
+    padding: spacing.xs / 2,
     marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
   segment: {
     flex: 1,
-    paddingVertical: spacing.sm,
+    // 44 + the track's 2dp padding on each side = a 48dp-tall control.
+    minHeight: minTouchTarget - spacing.xs,
     borderRadius: radius.pill,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   segmentSelected: {
     backgroundColor: colors.accentPrimary,

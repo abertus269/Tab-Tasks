@@ -1,6 +1,7 @@
 import { ChevronRight } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { DataText } from '@/components/DataText';
 import { colors, radius, spacing } from '@/theme/tokens';
 import { fonts, fontSize } from '@/theme/typography';
 
@@ -18,14 +19,19 @@ interface Props {
 // WeekDetailView's day headers).
 export function WeekRow({ rangeLabel, taskCount, isCurrentWeek, onPress }: Props) {
   return (
-    <Pressable onPress={onPress} style={styles.row}>
+    <Pressable
+      onPress={onPress}
+      style={styles.row}
+      accessibilityRole="button"
+      accessibilityLabel={`${rangeLabel}${isCurrentWeek ? ', this week' : ''}, ${taskCount} ${taskCount === 1 ? 'task' : 'tasks'}`}
+      android_ripple={{ color: colors.borderSubtle }}>
       <Text style={[styles.range, isCurrentWeek && styles.rangeCurrent]} numberOfLines={1}>
         {rangeLabel}
       </Text>
       <View style={styles.countBadge}>
-        <Text style={styles.countText}>
-          {taskCount} {taskCount === 1 ? 'task' : 'tasks'}
-        </Text>
+        <DataText style={[styles.countText, taskCount === 0 && styles.countEmpty]}>
+          {taskCount === 0 ? 'No tasks' : `${taskCount} ${taskCount === 1 ? 'task' : 'tasks'}`}
+        </DataText>
       </View>
       <ChevronRight size={20} color={colors.textSecondary} strokeWidth={1.75} style={styles.chevron} />
     </Pressable>
@@ -54,9 +60,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   countText: {
-    fontFamily: fonts.mono,
+    fontFamily: fonts.body,
     fontSize: fontSize.caption,
     color: colors.textSecondary,
+  },
+  // An empty bucket recedes, so the weeks and years that hold work stand out.
+  countEmpty: {
+    color: colors.textMuted,
   },
   chevron: {
     marginLeft: 'auto',

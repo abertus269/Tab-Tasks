@@ -8,6 +8,8 @@ import type { TaskRecord } from '@/lib/types';
 import { db } from './client';
 import { categories, settings, tasks } from './schema';
 
+import { syncWidget } from '../../widget/sync';
+
 export interface TaskInput {
   title: string;
   dueDate: string;
@@ -26,12 +28,14 @@ export async function createTask(input: TaskInput): Promise<string> {
   const id = randomUUID();
   const row = db.insert(tasks).values({ id, status: 'todo', ...input }).returning().get();
   await syncTaskReminder(row);
+  await syncWidget();
   return id;
 }
 
 export async function updateTask(id: string, input: TaskInput): Promise<void> {
   const row = db.update(tasks).set(input).where(eq(tasks.id, id)).returning().get();
   await syncTaskReminder(row);
+  await syncWidget();
 }
 
 export async function setTaskStatus(id: string, status: TaskStatus): Promise<void> {
@@ -44,11 +48,13 @@ export async function setTaskStatus(id: string, status: TaskStatus): Promise<voi
   // A reminder for a task already marked done is pure noise — syncTaskReminder
   // cancels it; cycling off done restores it if its fire time is still ahead.
   await syncTaskReminder(row);
+  await syncWidget();
 }
 
 export async function deleteTask(id: string): Promise<void> {
   db.delete(tasks).where(eq(tasks.id, id)).run();
   await cancelTaskReminder(id);
+  await syncWidget();
 }
 
 // Reinstates a task removed via the swipe/menu delete's undo toast, keyed on
@@ -58,6 +64,7 @@ export async function deleteTask(id: string): Promise<void> {
 export async function restoreTask(task: TaskRecord): Promise<void> {
   const row = db.insert(tasks).values(task).returning().get();
   await syncTaskReminder(row);
+  await syncWidget();
 }
 
 export interface CategoryInput {
@@ -95,6 +102,7 @@ export async function deleteCategory(id: string, mode: CategoryDeleteMode): Prom
       tx.delete(categories).where(eq(categories.id, id)).run();
     });
     await Promise.all(affected.map((task) => cancelTaskReminder(task.id)));
+    await syncWidget();
   } else {
     db.delete(categories).where(eq(categories.id, id)).run();
   }

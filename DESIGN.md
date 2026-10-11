@@ -8,12 +8,11 @@ productivity feel, and a glassy purple/gradient SaaS-dashboard feel — so this
 doc pulls one coherent system out of what they share, biased toward the
 simplest of the three since the brief is a "simple to-do app."
 
-**Note:** this is a deliberate departure from the cartoony, Adventure-Time /
-Duolingo-inspired look (Fredoka One + Nunito, thick outlines, chunky button
-shadows) that's shown up across your other projects — none of these three
-references lean cartoony. If you'd rather this app match that established
-look instead, say so and I'll redo §2–3; the layout and component structure
-below would carry over unchanged either way.
+**Settled (2026-10-11):** this system stays, and it does not take on the
+cartoony Fredoka/Nunito look of the user's other projects. Its signature is
+**Today**. The Tasks tab opens on the day itself (Today header), the Today
+divider is the list's one full-strength landmark, and an active task glows as
+a "Now" row. See PRODUCT.md for the product reasoning.
 
 ## 2. Color Palette
 
@@ -28,9 +27,15 @@ Dark mode only — all three references are dark, and none show a light theme.
 | `accent-warm` | `#FF9F45` | secondary accent — category color variety, not the primary CTA |
 | `text-primary` | `#F5F5F5` | titles, primary copy |
 | `text-secondary` | `#9A9A9A` | metadata (dates, times, counts) |
-| `text-muted` | `#5C5C5C` | completed-task strikethrough text |
-| `border-subtle` | `#2A2A2A` | card outlines, dividers |
-| `divider-today` | `accent-primary`, reduced opacity | the "today" line in Tasks tab |
+| `text-muted` | `#8A8A8A` | completed-task strikethrough, placeholders, empty-state copy (was `#5C5C5C`, 2.6:1, which failed AA; now ≥4.5:1 on every surface) |
+| `border-subtle` | `#2A2A2A` | card outlines, dividers (decorative only) |
+| `border-strong` | `#6E6E6E` | an outline that *is* the control (empty status square, input underline, switch off-track): ≥3:1 |
+| `bg-active` | `#23281A` | the "Now" row: a task whose status is active |
+| `border-active` | `#536229` | hairline around the "Now" row |
+| `divider-today` | `accent-primary`, full strength, 2px | the "Today" rule in the Tasks tab |
+
+`accent-warm` also marks lateness: an overdue task's due date and the
+header's overdue count.
 
 Category colors: a curated 6–8 hue swatch users assign per category — pull
 from the pastel set in reference #2 (lavender, cream/yellow, mint) plus 2–3
@@ -75,15 +80,29 @@ Suggested scale: Display 28–32 / Heading 20–22 / Body 15–16 / Caption 12�
 ## 6. Core Components
 
 **Task row** *(Tasks tab, Day view, Week view)*
-Checkbox (empty rounded-square outline → filled `accent-primary` with check
-on completion) · title (`text-primary`, strikethrough + `text-muted` when
-complete) · category chip · due time (`text-secondary`, mono) · optional
-task icon.
+Two tap targets. The status square is its own 48dp button: an empty
+`border-strong` outline for to do, a lime outline with a dot for active, a
+filled `accent-primary` square with a check for done. It springs (scales
+down, then back up) on every status change. Tapping anywhere else opens the
+task. Then come an optional task icon (its column is reserved even when
+empty, so titles align), the title (`text-primary`; strikethrough +
+`text-muted` when done), and a meta line: "Now" (active only), category
+chip, due date/time (`text-secondary`, numerals in mono via `DataText`;
+`accent-warm` when overdue), and a reminder bell. An active task's row uses
+`bg-active` with a `border-active` hairline.
+
+**Today header** *(Tasks tab, top)*
+Replaces the "Tasks" title, which the tab bar already shows. The day name
+is set at display size in the heading face. Under it runs one meta line:
+date · "3 left today" / "All done today" (lime) / "Clear day" · "2 done" ·
+"1 overdue" (`accent-warm`). Its counts cover every category, whatever
+filter is active.
 
 **Today divider**
-A thin rule spanning the list width, optionally with a small centered
-"Today" label in `accent-primary`. Reference #1's plain subtle line is
-enough on its own; the label is an optional clarity add.
+The list's landmark. "Today" sits left-aligned in the semibold heading
+face, `accent-primary`, followed by a 2px full-strength lime rule.
+"Upcoming" has the same shape, quieter: `text-secondary` label and a 1px
+`border-subtle` rule.
 
 **Day/Week section header**
 Large day name (heading font) + date subtext (`text-secondary`) — modeled
@@ -95,9 +114,11 @@ chevron — structurally identical to reference #1's stacked Tuesday /
 Wednesday / Thursday / Friday rows, reused one level up.
 
 **Month grid**
-Standard 7-column calendar. Selected date: solid `accent-primary` (or
-`accent-warm`) filled circle behind the number (reference #3's month-strip,
-expanded to a full month). Dates with tasks get a small dot indicator.
+Standard 7-column calendar with two-letter weekday labels (Su Mo Tu We Th Fr
+Sa) in the body face. Day numbers are mono. Selected date: a solid
+`accent-primary` filled circle behind the number (reference #3's
+month-strip, expanded to a full month). Today: a 2px `accent-primary` ring,
+so it holds its own next to a selection. Dates with tasks get a 6px dot.
 
 **Category chip / filter pill**
 Rounded-full pill. Unselected: `border-subtle` outline, `text-secondary`

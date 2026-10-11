@@ -21,7 +21,7 @@ No account, no cloud sync — everything lives on-device.
 | `description` | string           | optional, free text                    |
 | `categoryId`  | string \| null   | references a Category                  |
 | `icon`        | Lucide icon name | optional, user-selected                |
-| `status`      | `'todo' \| 'active' \| 'done'` | default `'todo'` — cycled by tapping the row |
+| `status`      | `'todo' \| 'active' \| 'done'` | default `'todo'` — cycled by tapping the row's status square |
 | `createdAt`   | datetime         | for tie-breaking / audit               |
 
 ### 2.2 Category
@@ -223,10 +223,22 @@ Also make sure to use this indicator of completion
   synonym list (e.g. "gym" finds the dumbbell icon). Kept cheap to scroll via fixed row/header
   heights (`getItemLayout`) and memoized cells rather than by limiting the count.
 
-- **WIDGET:** [] Would be nice to see daily tasks if need to be done.
+- **WIDGET:** [X] Would be nice to see daily tasks if need to be done.
   And swiping on it completes the task and tapping on it goes into the app.
   Or does the toggle to doing/ complete, original state.
   Either as a 2 x 2 or a 2 x 4 widget shape.
+  https://github.com/betomoedano/android-widget-app/tree/main/widget
+  As reference
+  — done: swipe is dropped — Android widgets (RemoteViews) support only tap and vertical-scroll,
+  no per-row swipe gesture at any layer. Tapping the row's status icon cycles todo → active → done
+  (same cycle as `src/lib/status.ts`); tapping the rest of the row opens the app to that task. A
+  done task stays visible in the widget, dimmed, rather than disappearing — the widget has no undo
+  toast, so a mis-tap stays reachable for a tap back. Built with `react-native-android-widget`,
+  sized 2×2 (default) resizable up to 4×2; a "Home screen widget" row in Settings triggers the
+  system's add-widget prompt. Verified on-device (release build, Nothing A015): status tap cycles
+  and persists to the app, done tasks stay visible dimmed, tapping a row deep-links into the app
+  even from a cold app process, and app-side edits sync to the widget with no widget interaction
+  needed.
 
 - **Exporting Tasks & Categories:** [] Should do automatically.
   Save tasks and categories should save locally so when

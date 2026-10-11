@@ -72,9 +72,11 @@ export function monthGridRange(anchor: Date, weekStartsOn: 0 | 1 = 0): { start: 
   return { start: grid[0][0], end: grid[grid.length - 1][6] };
 }
 
-// Su/M/Tu/W/Th/F/Sa — disambiguates Tue vs Thu and Sat vs Sun, unlike a
-// single-letter weekday header. Indexed by Date#getDay() (0 = Sunday).
-export const WEEKDAY_ABBR = ['Su', 'M', 'Tu', 'W', 'Th', 'F', 'Sa'] as const;
+// Su/Mo/Tu/We/Th/Fr/Sa — disambiguates Tue vs Thu and Sat vs Sun, unlike a
+// single-letter weekday header, and every label is the same two letters wide
+// (a mix of M/W/F and Su/Tu/Th read as inconsistent). Indexed by
+// Date#getDay() (0 = Sunday).
+export const WEEKDAY_ABBR = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'] as const;
 
 export function weekdayAbbr(date: Date): string {
   return WEEKDAY_ABBR[date.getDay()];

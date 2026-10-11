@@ -22,7 +22,11 @@ export function FilterPill({ label, color, icon, selected, onPress }: Props) {
   return (
     <Pressable
       onPress={onPress}
-      hitSlop={8}
+      // 36dp pill + 6dp above and below = 48dp. Horizontal slop stays inside
+      // the 8dp gap between neighbors so adjacent chips' targets never overlap.
+      hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
       style={[styles.pill, { backgroundColor: fill, borderColor: selected ? fill : colors.borderSubtle }]}>
       {icon && <DynamicIcon name={icon} size={14} color={textColor} strokeWidth={2} />}
       <Text style={[styles.label, { color: textColor }]} numberOfLines={1}>
@@ -38,7 +42,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.xs,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
+    minHeight: 36,
     borderRadius: radius.pill,
     borderWidth: 1,
   },

@@ -5,7 +5,9 @@ import { db } from '@/db/client';
 import { setSetting } from '@/db/mutations';
 import { settings } from '@/db/schema';
 
-const TAP_CYCLES_STATUS_KEY = 'tapCyclesStatus';
+// Exported so the widget task handler (widget/widget-task-handler.tsx) reads
+// the same key instead of duplicating the string.
+export const TAP_CYCLES_STATUS_KEY = 'tapCyclesStatus';
 
 export interface AppSettings {
   // Tapping a row walks todo -> active -> done -> todo. Off, a tap is a plain

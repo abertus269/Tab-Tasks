@@ -5,8 +5,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DynamicIcon } from '@/components/DynamicIcon';
 import { IconPicker } from '@/components/IconPicker';
 import { createCategory, updateCategory } from '@/db/mutations';
+import { iconLabel } from '@/lib/icons';
 import type { CategoryRecord } from '@/lib/types';
-import { categoryColors, colors, radius, spacing } from '@/theme/tokens';
+import { categoryColorNames, categoryColors, colors, minTouchTarget, radius, spacing } from '@/theme/tokens';
 import { fonts, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -68,7 +69,9 @@ function CategoryEditForm({ category, onClose, onSaved }: FormProps) {
     <>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={[styles.sheet, { paddingBottom: insets.bottom + spacing.lg }]}>
-          <Text style={styles.title}>{category ? 'Edit category' : 'New category'}</Text>
+          <Text style={styles.title} accessibilityRole="header">
+            {category ? 'Edit category' : 'New category'}
+          </Text>
 
           <TextInput
             value={name}
@@ -78,32 +81,50 @@ function CategoryEditForm({ category, onClose, onSaved }: FormProps) {
             }}
             placeholder="Category name"
             placeholderTextColor={colors.textMuted}
+            accessibilityLabel="Category name"
             style={styles.input}
             autoFocus={!category}
           />
-          {error && <Text style={styles.errorText}>{error}</Text>}
+          {error && (
+            <Text style={styles.errorText} accessibilityLiveRegion="polite">
+              {error}
+            </Text>
+          )}
 
           <View style={styles.swatchRow}>
             {categoryColors.map((c) => (
+              // Each swatch owns an equal share of the row (≥47dp on a 411dp
+              // phone) at a full 48dp tall, with the 32dp circle centered in it
+              // — tap targets that tile the row instead of overlapping slop.
               <Pressable
                 key={c}
                 onPress={() => setColor(c)}
-                style={[styles.swatch, { backgroundColor: c }, color === c && styles.swatchSelected]}
-              />
+                accessibilityRole="radio"
+                accessibilityLabel={categoryColorNames[c] ?? c}
+                accessibilityState={{ checked: color === c }}
+                style={styles.swatchCell}>
+                <View style={[styles.swatch, { backgroundColor: c }, color === c && styles.swatchSelected]} />
+              </Pressable>
             ))}
           </View>
 
-          <Pressable onPress={() => setIconPickerVisible(true)} style={styles.iconButton}>
+          <Pressable
+            onPress={() => setIconPickerVisible(true)}
+            style={styles.iconButton}
+            accessibilityRole="button"
+            accessibilityLabel={`Category icon, ${icon ? iconLabel(icon) : 'none'}`}>
             {icon ? (
               <DynamicIcon name={icon} size={20} color={colors.textPrimary} strokeWidth={1.75} />
             ) : (
               <Text style={styles.iconButtonPlaceholder}>No icon</Text>
             )}
-            <Text style={styles.iconButtonLabel}>Choose icon</Text>
+            <Text style={styles.iconButtonLabel}>{icon ? 'Change icon' : 'Choose icon'}</Text>
           </Pressable>
 
           <Pressable
             onPress={handleSave}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !name.trim() }}
             disabled={!name.trim()}
             style={[styles.saveButton, !name.trim() && styles.saveButtonDisabled]}>
             <Text style={styles.saveLabel}>{category ? 'Save' : 'Create'}</Text>
@@ -161,8 +182,13 @@ const styles = StyleSheet.create({
   },
   swatchRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
+    marginHorizontal: -spacing.xs,
+  },
+  swatchCell: {
+    flex: 1,
+    minHeight: minTouchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   swatch: {
     width: SWATCH_SIZE,
@@ -181,7 +207,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgSurface,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 2,
+    minHeight: minTouchTarget,
     alignSelf: 'flex-start',
   },
   iconButtonPlaceholder: {
@@ -197,8 +223,9 @@ const styles = StyleSheet.create({
   saveButton: {
     backgroundColor: colors.accentPrimary,
     borderRadius: radius.pill,
-    paddingVertical: spacing.md,
+    minHeight: minTouchTarget,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   saveButtonDisabled: {
     opacity: 0.4,

@@ -44,3 +44,11 @@ example
 
 # device verification artifacts (screenshots, logcat dumps)
 /.artifacts/
+
+# local-only tool state
+.claude/settings.local.json
+.impeccable/config.local.json
+.impeccable/hook.cache.json
+# impeccable launcher binaries (re-downloaded on first run)
+.claude/skills/impeccable/scripts/bin/
+.agents/skills/impeccable/scripts/bin/

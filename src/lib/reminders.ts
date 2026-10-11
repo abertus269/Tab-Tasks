@@ -7,8 +7,8 @@ export interface ReminderOption {
   label: string;
 }
 
-// None first so a new task defaults to no reminder; order also defines the
-// cycle order the task form's Reminder field steps through on tap.
+// None first so a new task defaults to no reminder; order is also the
+// left-to-right order of the task form's reminder chips.
 export const REMINDER_OPTIONS: ReminderOption[] = [
   { minutesBefore: null, label: 'None' },
   { minutesBefore: 0, label: 'At due time' },
@@ -20,18 +20,10 @@ export const REMINDER_OPTIONS: ReminderOption[] = [
 // A task with no dueTime still needs a wall-clock instant to fire a reminder
 // from — anchoring at 9am keeps "1 day before" a same-morning reminder rather
 // than firing at midnight.
-const UNTIMED_REMINDER_HOUR = 9;
+export const UNTIMED_REMINDER_HOUR = 9;
 
 export function reminderLabel(minutesBefore: number | null): string {
   return REMINDER_OPTIONS.find((o) => o.minutesBefore === minutesBefore)?.label ?? 'None';
-}
-
-// Steps to the next option in REMINDER_OPTIONS, wrapping back to the start —
-// backs the task form's tap-to-cycle Reminder field.
-export function cycleReminderOption(current: number | null): number | null {
-  const index = REMINDER_OPTIONS.findIndex((o) => o.minutesBefore === current);
-  const next = REMINDER_OPTIONS[(index + 1) % REMINDER_OPTIONS.length];
-  return next.minutesBefore;
 }
 
 // The exact instant a task's reminder should fire, or null when reminders are

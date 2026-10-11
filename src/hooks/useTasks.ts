@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
-import { and, eq, gte, lte, sql, type SQL } from 'drizzle-orm';
+import { and, asc, eq, gt, gte, lte, ne, sql, type SQL } from 'drizzle-orm';
 import { useMemo } from 'react';
 
 import { db } from '@/db/client';
@@ -52,6 +52,25 @@ export function useTask(id: string | undefined): TaskWithCategory | null {
   const where = useMemo(() => (id ? eq(tasks.id, id) : undefined), [id]);
   const rows = useJoinedTasks(where);
   return id ? (rows[0] ?? null) : null;
+}
+
+// The earliest not-done task due after `date`, or null — what an empty Day
+// view points at, so a blank day still says where the next work is.
+export function useNextTaskAfter(date: string): TaskWithCategory | null {
+  const query = useMemo(
+    () =>
+      db
+        .select()
+        .from(tasks)
+        .leftJoin(categories, eq(tasks.categoryId, categories.id))
+        .where(and(gt(tasks.dueDate, date), ne(tasks.status, 'done')))
+        .orderBy(asc(tasks.dueDate), sql`${tasks.dueTime} IS NOT NULL`, asc(tasks.dueTime), asc(tasks.createdAt))
+        .limit(1),
+    [date],
+  );
+  const { data } = useLiveQuery(query, [query]);
+  const row = data?.[0];
+  return row ? toTaskWithCategory(row) : null;
 }
 
 // Per-date task counts within [start, end] — Month view's dot indicators.

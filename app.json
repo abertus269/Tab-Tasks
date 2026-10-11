@@ -28,10 +28,36 @@
       ],
       "expo-sqlite",
       "@react-native-community/datetimepicker",
+      "./plugins/withDarkSystemPickers",
       [
         "expo-notifications",
         {
           "color": "#D6FF5C"
+        }
+      ],
+      [
+        "react-native-android-widget",
+        {
+          "fonts": [
+            "./assets/fonts/Inter_500Medium.ttf",
+            "./assets/fonts/SpaceMono_400Regular.ttf",
+            "./assets/fonts/SpaceGrotesk_600SemiBold.ttf"
+          ],
+          "widgets": [
+            {
+              "name": "TodayTasks",
+              "label": "Today's Tasks",
+              "description": "Today's tasks — tap the status dot to cycle, tap a task to open it.",
+              "minWidth": "110dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 2,
+              "maxResizeWidth": "250dp",
+              "maxResizeHeight": "250dp",
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000
+            }
+          ]
         }
       ]
     ],

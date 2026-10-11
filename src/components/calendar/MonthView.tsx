@@ -60,7 +60,7 @@ export function MonthView({ anchorDate, onSelectDate }: Props) {
 
   return (
     <View style={styles.flex}>
-      <View style={styles.weekdayRow}>
+      <View style={styles.weekdayRow} importantForAccessibility="no-hide-descendants">
         {WEEKDAY_ABBR.map((label, i) => (
           <Text key={i} style={styles.weekdayLabel}>
             {label}
@@ -108,7 +108,9 @@ function MonthBlock({ monthStart, selectedDate, today, counts, onSelectDate }: M
 
   return (
     <View style={styles.monthBlock}>
-      <Text style={styles.monthLabel}>{format(monthStart, 'MMMM yyyy')}</Text>
+      <Text style={styles.monthLabel} accessibilityRole="header">
+        {format(monthStart, 'MMMM yyyy')}
+      </Text>
       <MonthGrid
         grid={grid}
         currentMonthPrefix={format(monthStart, 'yyyy-MM')}
@@ -132,7 +134,7 @@ const styles = StyleSheet.create({
   weekdayLabel: {
     flex: 1,
     textAlign: 'center',
-    fontFamily: fonts.mono,
+    fontFamily: fonts.bodyMedium,
     fontSize: fontSize.caption,
     color: colors.textSecondary,
   },

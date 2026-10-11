@@ -11,7 +11,8 @@ interface Props {
   onComplete: (task: TaskWithCategory) => void;
   onDelete: (task: TaskWithCategory) => void;
   onLongPress: (task: TaskWithCategory, anchor: RowAnchor) => void;
-  onTaskPress: (task: TaskWithCategory) => void;
+  onTaskStatusPress: (task: TaskWithCategory) => void;
+  onTaskOpen: (task: TaskWithCategory) => void;
   registerExit: RegisterRowExit;
 }
 
@@ -30,7 +31,8 @@ export function WeekView({
   onComplete,
   onDelete,
   onLongPress,
-  onTaskPress,
+  onTaskStatusPress,
+  onTaskOpen,
   registerExit,
 }: Props) {
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date | null>(null);
@@ -44,7 +46,8 @@ export function WeekView({
         onComplete={onComplete}
         onDelete={onDelete}
         onLongPress={onLongPress}
-        onTaskPress={onTaskPress}
+        onTaskStatusPress={onTaskStatusPress}
+        onTaskOpen={onTaskOpen}
         registerExit={registerExit}
       />
     );

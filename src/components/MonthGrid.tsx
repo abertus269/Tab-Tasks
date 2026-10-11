@@ -1,6 +1,7 @@
+import { format } from 'date-fns';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { WEEKDAY_ABBR } from '@/lib/dates';
+import { parseDateString, WEEKDAY_ABBR } from '@/lib/dates';
 import { colors, spacing } from '@/theme/tokens';
 import { fonts, fontSize } from '@/theme/typography';
 
@@ -29,7 +30,9 @@ export function MonthGrid({
   return (
     <View>
       {showWeekdayHeader && (
-        <View style={styles.weekdayRow}>
+        // Each day cell already announces its full weekday; reading the
+        // "Su M Tu…" strip as well would just be noise.
+        <View style={styles.weekdayRow} importantForAccessibility="no-hide-descendants">
           {WEEKDAY_ABBR.map((label, i) => (
             <Text key={i} style={styles.weekdayLabel}>
               {label}
@@ -47,8 +50,19 @@ export function MonthGrid({
             const dayNumber = Number(date.slice(8, 10));
 
             return (
-              <Pressable key={date} onPress={() => onSelectDate(date)} style={styles.cell}>
-                <View style={[styles.dayCircle, isSelected && styles.dayCircleSelected]}>
+              <Pressable
+                key={date}
+                onPress={() => onSelectDate(date)}
+                style={styles.cell}
+                accessibilityRole="button"
+                accessibilityLabel={dayCellLabel(date, count, isToday)}
+                accessibilityState={{ selected: isSelected }}>
+                <View
+                  style={[
+                    styles.dayCircle,
+                    isToday && styles.dayCircleToday,
+                    isSelected && styles.dayCircleSelected,
+                  ]}>
                   <Text
                     style={[
                       styles.dayNumber,
@@ -69,6 +83,15 @@ export function MonthGrid({
   );
 }
 
+// "Sunday, October 11, today, 2 tasks" — a bare "11" tells a TalkBack user
+// nothing about which month it's in or whether anything is due.
+function dayCellLabel(date: string, count: number, isToday: boolean): string {
+  const parts = [format(parseDateString(date), 'EEEE, MMMM d')];
+  if (isToday) parts.push('today');
+  parts.push(count === 0 ? 'no tasks' : count === 1 ? '1 task' : `${count} tasks`);
+  return parts.join(', ');
+}
+
 const CELL_SIZE = 40;
 
 const styles = StyleSheet.create({
@@ -79,7 +102,7 @@ const styles = StyleSheet.create({
   weekdayLabel: {
     flex: 1,
     textAlign: 'center',
-    fontFamily: fonts.mono,
+    fontFamily: fonts.bodyMedium,
     fontSize: fontSize.caption,
     color: colors.textSecondary,
   },
@@ -90,7 +113,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: spacing.xs,
-    gap: 3,
+    gap: spacing.xs,
   },
   dayCircle: {
     width: CELL_SIZE,
@@ -99,11 +122,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Today is a lime ring, so it holds its own next to the filled selected
+  // circle instead of reading as lime text that a selection outshouts.
+  dayCircleToday: {
+    borderWidth: 2,
+    borderColor: colors.accentPrimary,
+  },
   dayCircleSelected: {
     backgroundColor: colors.accentPrimary,
   },
   dayNumber: {
-    fontFamily: fonts.body,
+    fontFamily: fonts.mono,
     fontSize: fontSize.body,
     color: colors.textPrimary,
   },
@@ -112,16 +141,14 @@ const styles = StyleSheet.create({
   },
   dayNumberSelected: {
     color: colors.bgBase,
-    fontFamily: fonts.bodyMedium,
   },
   dayNumberToday: {
     color: colors.accentPrimary,
-    fontFamily: fonts.bodyMedium,
   },
   dot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: 'transparent',
   },
   dotVisible: {

@@ -17,6 +17,7 @@ export function AddTaskButton({ onPress }: Props) {
     <Pressable
       onPress={onPress}
       style={styles.button}
+      accessibilityRole="button"
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
       <Plus size={16} color={colors.bgBase} strokeWidth={2.5} />
       <Text style={styles.label}>Add task</Text>

@@ -3,7 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { deleteCategory, type CategoryDeleteMode } from '@/db/mutations';
 import type { CategoryRecord } from '@/lib/types';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { colors, minTouchTarget, radius, spacing } from '@/theme/tokens';
 import { fonts, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -28,18 +28,24 @@ export function DeleteCategoryPrompt({ category, onClose }: Props) {
     <Modal visible={!!category} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={[styles.sheet, { paddingBottom: insets.bottom + spacing.lg }]}>
-          <Text style={styles.title}>{`Delete "${category?.name}"?`}</Text>
+          <Text style={styles.title} accessibilityRole="header">{`Delete "${category?.name}"?`}</Text>
           <Text style={styles.body}>
             Its tasks can be moved to Uncategorized, or deleted along with the category.
           </Text>
 
-          <Pressable onPress={() => handleConfirm('reassign')} style={styles.primaryButton}>
+          <Pressable
+            onPress={() => handleConfirm('reassign')}
+            style={styles.primaryButton}
+            accessibilityRole="button">
             <Text style={styles.primaryLabel}>Move tasks to Uncategorized</Text>
           </Pressable>
-          <Pressable onPress={() => handleConfirm('deleteTasks')} style={styles.dangerButton}>
+          <Pressable
+            onPress={() => handleConfirm('deleteTasks')}
+            style={styles.dangerButton}
+            accessibilityRole="button">
             <Text style={styles.dangerLabel}>Delete category and its tasks</Text>
           </Pressable>
-          <Pressable onPress={onClose} style={styles.cancelButton}>
+          <Pressable onPress={onClose} style={styles.cancelButton} accessibilityRole="button">
             <Text style={styles.cancelLabel}>Cancel</Text>
           </Pressable>
         </Pressable>
@@ -74,7 +80,8 @@ const styles = StyleSheet.create({
   primaryButton: {
     backgroundColor: colors.accentPrimary,
     borderRadius: radius.pill,
-    paddingVertical: spacing.md,
+    minHeight: minTouchTarget,
+    justifyContent: 'center',
     alignItems: 'center',
   },
   primaryLabel: {
@@ -86,7 +93,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.danger,
-    paddingVertical: spacing.md,
+    minHeight: minTouchTarget,
+    justifyContent: 'center',
     alignItems: 'center',
   },
   dangerLabel: {
@@ -95,7 +103,8 @@ const styles = StyleSheet.create({
     color: colors.danger,
   },
   cancelButton: {
-    paddingVertical: spacing.sm,
+    minHeight: minTouchTarget,
+    justifyContent: 'center',
     alignItems: 'center',
   },
   cancelLabel: {

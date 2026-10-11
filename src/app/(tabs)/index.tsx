@@ -1,25 +1,26 @@
 import { useRouter } from 'expo-router';
 import { Settings } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddTaskButton } from '@/components/AddTaskButton';
 import { EmptyState } from '@/components/EmptyState';
 import { EmptyTodayRow, ListDivider } from '@/components/ListDivider';
 import { FilterPill } from '@/components/FilterPill';
+import { IconButton } from '@/components/IconButton';
 import { SwipeableTaskRow } from '@/components/SwipeableTaskRow';
 import { TaskContextMenu } from '@/components/TaskContextMenu';
+import { TodayHeader } from '@/components/TodayHeader';
 import { UndoToast } from '@/components/UndoToast';
 import { useCategories } from '@/hooks/useCategories';
 import { useTaskRowActions } from '@/hooks/useTaskRowActions';
 import { useAllTasks } from '@/hooks/useTasks';
-import { todayString } from '@/lib/dates';
+import { parseDateString, todayString } from '@/lib/dates';
 import { COMPLETED_FILTER, emptyMessageFor, filterTasks, inCategoryScope, type FilterValue } from '@/lib/filters';
 import { type RenderRow, withListDividers } from '@/lib/ordering';
 import type { TaskWithCategory } from '@/lib/types';
 import { colors, spacing } from '@/theme/tokens';
-import { fonts, fontSize } from '@/theme/typography';
 
 interface FilterOption {
   id: FilterValue;
@@ -34,6 +35,7 @@ export default function TasksScreen() {
   const categories = useCategories();
   const rowActions = useTaskRowActions({ completeBehavior: 'exit' });
   const [activeFilter, setActiveFilter] = useState<FilterValue>('all');
+  const today = todayString();
 
   const filterOptions: FilterOption[] = useMemo(
     () => [
@@ -58,8 +60,25 @@ export default function TasksScreen() {
     if (activeFilter === COMPLETED_FILTER) {
       return visibleTasks.map((task) => ({ type: 'task', task }));
     }
-    return withListDividers(visibleTasks, todayString());
-  }, [visibleTasks, activeFilter]);
+    return withListDividers(visibleTasks, today);
+  }, [visibleTasks, activeFilter, today]);
+
+  // Across every category, regardless of the active filter — the header
+  // reports on the day, not on the current view of it.
+  const todayCounts = useMemo(() => {
+    let leftToday = 0;
+    let doneToday = 0;
+    let overdue = 0;
+    for (const t of allTasks) {
+      if (t.dueDate === today) {
+        if (t.status === 'done') doneToday++;
+        else leftToday++;
+      } else if (t.dueDate < today && t.status !== 'done') {
+        overdue++;
+      }
+    }
+    return { leftToday, doneToday, overdue };
+  }, [allTasks, today]);
 
   const hasAnyInScope = useMemo(
     () => allTasks.some((t) => inCategoryScope(t, activeFilter)),
@@ -69,10 +88,8 @@ export default function TasksScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.titleRow}>
-        <Text style={styles.title}>Tasks</Text>
-        <Pressable onPress={() => router.push('/settings')} hitSlop={8}>
-          <Settings size={22} color={colors.textSecondary} strokeWidth={1.75} />
-        </Pressable>
+        <TodayHeader today={parseDateString(today)} {...todayCounts} />
+        <IconButton icon={Settings} label="Settings" onPress={() => router.push('/settings')} />
       </View>
 
       <FlatList
@@ -114,7 +131,8 @@ export default function TasksScreen() {
               <SwipeableTaskRow
                 task={item.task}
                 completeBehavior={rowActions.completeBehavior}
-                onPress={() => rowActions.cycleStatus(item.task)}
+                onStatusPress={() => rowActions.cycleStatus(item.task)}
+                onOpen={() => rowActions.editTask(item.task)}
                 onComplete={rowActions.completeTask}
                 onDelete={rowActions.deleteWithUndo}
                 onLongPress={rowActions.openMenu}
@@ -146,16 +164,13 @@ const styles = StyleSheet.create({
   },
   titleRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
+    paddingLeft: spacing.lg,
+    // The gear's 48dp IconButton target supplies its own inset.
+    paddingRight: spacing.xs,
     paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
-  },
-  title: {
-    fontFamily: fonts.heading,
-    fontSize: fontSize.display,
-    color: colors.textPrimary,
+    paddingBottom: spacing.sm,
   },
   filterList: {
     flexGrow: 0,
@@ -163,6 +178,9 @@ const styles = StyleSheet.create({
   filterRow: {
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
+    // Android drops touches outside a list's bounds, so the chips' 6dp
+    // vertical hitSlop needs real padding to land in.
+    paddingTop: spacing.sm,
     paddingBottom: spacing.md,
   },
   list: {

@@ -1,27 +1,27 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
+import { IconButton } from '@/components/IconButton';
 import { colors, spacing } from '@/theme/tokens';
 import { fonts, fontSize } from '@/theme/typography';
 
 interface Props {
   label: string;
+  // What one step is — "day", "month" — so the arrows announce
+  // "Previous month" rather than a bare, unlabeled chevron.
+  unit: string;
   onPrev: () => void;
   onNext: () => void;
 }
 
-export function DateNavHeader({ label, onPrev, onNext }: Props) {
+export function DateNavHeader({ label, unit, onPrev, onNext }: Props) {
   return (
     <View style={styles.row}>
-      <Pressable onPress={onPrev} hitSlop={12} style={styles.arrow}>
-        <ChevronLeft size={22} color={colors.textSecondary} strokeWidth={1.75} />
-      </Pressable>
-      <Text style={styles.label} numberOfLines={1}>
+      <IconButton icon={ChevronLeft} label={`Previous ${unit}`} onPress={onPrev} />
+      <Text style={styles.label} numberOfLines={1} accessibilityRole="header">
         {label}
       </Text>
-      <Pressable onPress={onNext} hitSlop={12} style={styles.arrow}>
-        <ChevronRight size={22} color={colors.textSecondary} strokeWidth={1.75} />
-      </Pressable>
+      <IconButton icon={ChevronRight} label={`Next ${unit}`} onPress={onNext} />
     </View>
   );
 }
@@ -31,11 +31,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-  },
-  arrow: {
-    padding: spacing.xs,
+    paddingHorizontal: spacing.xs,
   },
   label: {
     flex: 1,

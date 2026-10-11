@@ -4,8 +4,9 @@ import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'r
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DynamicIcon } from '@/components/DynamicIcon';
-import { buildPickerItems, searchIconGroups, type PickerItem } from '@/lib/icons';
-import { colors, iconSize, radius, spacing, strokeWidth } from '@/theme/tokens';
+import { IconButton } from '@/components/IconButton';
+import { buildPickerItems, iconLabel, searchIconGroups, type PickerItem } from '@/lib/icons';
+import { colors, iconSize, minTouchTarget, radius, spacing, strokeWidth } from '@/theme/tokens';
 import { fonts, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -84,10 +85,10 @@ export function IconPicker({ visible, selected, onSelect, onClose }: Props) {
       <View style={styles.backdrop}>
         <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing.lg }]}>
           <View style={styles.header}>
-            <Text style={styles.title}>Choose an icon</Text>
-            <Pressable onPress={handleClose} hitSlop={8}>
-              <X size={20} color={colors.textSecondary} strokeWidth={1.75} />
-            </Pressable>
+            <Text style={styles.title} accessibilityRole="header">
+              Choose an icon
+            </Text>
+            <IconButton icon={X} label="Close" onPress={handleClose} />
           </View>
 
           <TextInput
@@ -95,6 +96,7 @@ export function IconPicker({ visible, selected, onSelect, onClose }: Props) {
             onChangeText={setQuery}
             placeholder="Search icons"
             placeholderTextColor={colors.textMuted}
+            accessibilityLabel="Search icons"
             style={styles.search}
           />
 
@@ -138,7 +140,7 @@ const IconCell = memo(function IconCell({ name, selected, onSelect }: IconCellPr
       onPress={() => onSelect(selected ? null : name)}
       style={[styles.cell, selected && styles.cellSelected]}
       accessibilityRole="button"
-      accessibilityLabel={name}
+      accessibilityLabel={iconLabel(name)}
       accessibilityState={{ selected }}>
       <DynamicIcon
         name={name}
@@ -184,7 +186,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.md,
+    // Absorbs the close button's 48dp target so the glyph stays at the edge.
+    marginTop: -spacing.md,
+    marginRight: -spacing.md,
+    marginBottom: spacing.xs,
   },
   title: {
     fontFamily: fonts.heading,
@@ -195,7 +200,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgSurface,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
+    minHeight: minTouchTarget,
     color: colors.textPrimary,
     fontFamily: fonts.body,
     fontSize: fontSize.body,

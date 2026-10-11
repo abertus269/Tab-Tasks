@@ -82,7 +82,7 @@ describe('weekdayAbbr', () => {
   it('disambiguates every day of the week', () => {
     // 2026-08-16 is a Sunday; walk one full week from there.
     const labels = Array.from({ length: 7 }, (_, i) => weekdayAbbr(new Date(2026, 7, 16 + i)));
-    expect(labels).toEqual(['Su', 'M', 'Tu', 'W', 'Th', 'F', 'Sa']);
+    expect(labels).toEqual(['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']);
   });
 });
 

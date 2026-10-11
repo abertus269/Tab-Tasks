@@ -1,4 +1,4 @@
-import { cycleReminderOption, reminderFireDate, reminderLabel, REMINDER_OPTIONS } from '../reminders';
+import { reminderFireDate, reminderLabel, REMINDER_OPTIONS } from '../reminders';
 
 describe('reminderFireDate', () => {
   it('returns null when there is no reminder', () => {
@@ -55,14 +55,8 @@ describe('reminderLabel', () => {
   });
 });
 
-describe('cycleReminderOption', () => {
-  it('steps through every option in order and wraps back to None', () => {
-    const order = REMINDER_OPTIONS.map((o) => o.minutesBefore);
-    let current: number | null = null;
-    for (let i = 0; i < order.length; i++) {
-      expect(current).toBe(order[i]);
-      current = cycleReminderOption(current);
-    }
-    expect(current).toBeNull(); // wrapped back to the start
+describe('REMINDER_OPTIONS', () => {
+  it('starts with None, so a new task defaults to no reminder', () => {
+    expect(REMINDER_OPTIONS[0].minutesBefore).toBeNull();
   });
 });

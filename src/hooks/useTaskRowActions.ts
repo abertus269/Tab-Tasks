@@ -1,13 +1,12 @@
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
-import { deleteTask, restoreTask, setTaskStatus } from '@/db/mutations';
+import { deleteTask, setTaskStatus } from '@/db/mutations';
 import { useSettings } from '@/hooks/useSettings';
 import { crossesDone, nextStatus } from '@/lib/status';
 import type { CompleteBehavior, RowAnchor, RowExitTrigger, TaskWithCategory } from '@/lib/types';
-import { undoToastMessage, type PendingUndo } from '@/lib/undo';
-
-const UNDO_WINDOW_MS = 5000;
+import { undoToastMessage } from '@/lib/undo';
+import { dismissUndo, performUndo, startUndoWindow, usePendingUndo } from '@/store/undo';
 
 interface MenuState {
   task: TaskWithCategory;
@@ -25,25 +24,14 @@ export function useTaskRowActions({ completeBehavior }: { completeBehavior: Comp
   const router = useRouter();
   const { tapCyclesStatus } = useSettings();
   const [menu, setMenu] = useState<MenuState | null>(null);
-  const [pendingUndo, setPendingUndo] = useState<PendingUndo | null>(null);
-  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // App-wide rather than per-screen, so a delete from the task form can
+  // offer its Undo here after the form closes — see src/store/undo.ts.
+  const pendingUndo = usePendingUndo();
   // Lets TaskContextMenu's Delete button, and (in 'exit' mode) a tap that
   // crosses the done boundary, replay the same slide-out + collapse
   // animation as a direct swipe, keyed by task id so it always targets the
   // row that was actually acted on.
   const rowExitTriggers = useRef(new Map<string, RowExitTrigger>());
-
-  useEffect(() => {
-    return () => {
-      if (undoTimer.current) clearTimeout(undoTimer.current);
-    };
-  }, []);
-
-  const startUndoWindow = useCallback((pending: PendingUndo) => {
-    if (undoTimer.current) clearTimeout(undoTimer.current);
-    setPendingUndo(pending);
-    undoTimer.current = setTimeout(() => setPendingUndo(null), UNDO_WINDOW_MS);
-  }, []);
 
   // Swipe is a direct done/not-done toggle, always — unlike a tap, it never
   // respects the cycle setting. A big deliberate gesture maps to a big
@@ -61,7 +49,7 @@ export function useTaskRowActions({ completeBehavior }: { completeBehavior: Comp
         startUndoWindow({ kind: 'status', task, previousStatus });
       }
     },
-    [completeBehavior, startUndoWindow],
+    [completeBehavior],
   );
 
   // In 'exit' mode, any status change that would make the row leave the
@@ -96,13 +84,10 @@ export function useTaskRowActions({ completeBehavior }: { completeBehavior: Comp
     router.push({ pathname: '/task-form', params: { id: task.id } });
   }
 
-  const deleteWithUndo = useCallback(
-    async (task: TaskWithCategory) => {
-      await deleteTask(task.id);
-      startUndoWindow({ kind: 'delete', task });
-    },
-    [startUndoWindow],
-  );
+  const deleteWithUndo = useCallback(async (task: TaskWithCategory) => {
+    await deleteTask(task.id);
+    startUndoWindow({ kind: 'delete', task });
+  }, []);
 
   const registerRowExit = useCallback((taskId: string, trigger: RowExitTrigger) => {
     rowExitTriggers.current.set(taskId, trigger);
@@ -123,23 +108,6 @@ export function useTaskRowActions({ completeBehavior }: { completeBehavior: Comp
     }
   }, [menu, deleteWithUndo]);
 
-  const undo = useCallback(async () => {
-    if (!pendingUndo) return;
-    if (undoTimer.current) clearTimeout(undoTimer.current);
-    setPendingUndo(null);
-    if (pendingUndo.kind === 'delete') {
-      const { category: _category, ...row } = pendingUndo.task;
-      await restoreTask(row);
-    } else {
-      await setTaskStatus(pendingUndo.task.id, pendingUndo.previousStatus);
-    }
-  }, [pendingUndo]);
-
-  function dismissUndo() {
-    if (undoTimer.current) clearTimeout(undoTimer.current);
-    setPendingUndo(null);
-  }
-
   function openNewTask(prefillDate?: string) {
     router.push({ pathname: '/task-form', params: prefillDate ? { dueDate: prefillDate } : {} });
   }
@@ -157,7 +125,7 @@ export function useTaskRowActions({ completeBehavior }: { completeBehavior: Comp
     confirmMenuDelete,
     pendingUndo,
     undoMessage: undoToastMessage(pendingUndo),
-    undo,
+    undo: performUndo,
     dismissUndo,
     openNewTask,
   };

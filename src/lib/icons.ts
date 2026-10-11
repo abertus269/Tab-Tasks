@@ -290,6 +290,12 @@ export const ICONS: Record<string, LucideIcon> = ICON_GROUPS.reduce<Record<strin
 
 export const ICON_NAMES = Object.keys(ICONS);
 
+// Spoken form of a stored icon key for TalkBack — "graduation-cap" reads as
+// "graduation cap" rather than "graduation dash cap".
+export function iconLabel(name: string): string {
+  return name.replace(/-/g, ' ');
+}
+
 export function getIcon(name: string | null | undefined): LucideIcon | null {
   if (!name) return null;
   return ICONS[name] ?? null;

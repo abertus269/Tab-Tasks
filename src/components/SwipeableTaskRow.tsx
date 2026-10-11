@@ -29,7 +29,9 @@ interface Props {
   // that list. 'toggle' (Calendar Day/Week): a completed swipe flips the
   // status in place and springs back — done tasks stay visible there.
   completeBehavior: CompleteBehavior;
-  onPress: () => void;
+  // Tap on the status square (cycles status) / anywhere else on the row (opens it).
+  onStatusPress: () => void;
+  onOpen: () => void;
   onComplete: (task: TaskWithCategory) => void;
   onDelete: (task: TaskWithCategory) => void;
   onLongPress: (task: TaskWithCategory, anchor: RowAnchor) => void;
@@ -45,9 +47,9 @@ const EXIT_OVERSHOOT = 32;
 // horizontal drag past 12px activates pan before long-press's 350ms timer
 // can fire, and holding still keeps the drag under long-press's 12px
 // maxDistance, so they can never both activate. Neither steals a plain tap —
-// TaskRow's own Pressable underneath only loses the touch once one of these
-// gestures actually activates, so tapping the row (which cycles its status)
-// is unaffected.
+// TaskRow's own Pressables underneath only lose the touch once one of these
+// gestures actually activates, so tapping the status square (cycles status)
+// or the rest of the row (opens the task) is unaffected.
 //
 // A completed swipe marks the task done (or undoes it back to todo if it was
 // already done — swipe is a direct toggle, independent of the tap-cycle
@@ -62,7 +64,8 @@ const EXIT_OVERSHOOT = 32;
 export function SwipeableTaskRow({
   task,
   completeBehavior,
-  onPress,
+  onStatusPress,
+  onOpen,
   onComplete,
   onDelete,
   onLongPress,
@@ -188,24 +191,30 @@ export function SwipeableTaskRow({
         </Animated.View>
       </Animated.View>
       <GestureDetector gesture={gesture}>
-        <Animated.View
-          style={rowStyle}
-          onLayout={(e) => setRowWidth(e.nativeEvent.layout.width)}
-          accessibilityActions={[
-            { name: 'activate', label: 'Cycle status' },
-            { name: 'complete', label: task.status === 'done' ? 'Mark not done' : 'Mark done' },
-            { name: 'delete', label: 'Delete' },
-          ]}
-          onAccessibilityAction={(e) => {
-            if (e.nativeEvent.actionName === 'activate') onPress();
-            if (e.nativeEvent.actionName === 'complete') {
-              if (completeBehavior === 'exit') runExit(1, 'complete');
-              else onComplete(task);
-            }
-            if (e.nativeEvent.actionName === 'delete') runExit(1, 'delete');
-          }}>
+        <Animated.View style={rowStyle} onLayout={(e) => setRowWidth(e.nativeEvent.layout.width)}>
           <View ref={measureRef} collapsable={false}>
-            <TaskRow task={task} onPress={onPress} />
+            {/* The swipe and delete gestures have no TalkBack equivalent of
+                their own, so they're offered as custom actions on the row
+                itself — the element TalkBack actually focuses. On this
+                wrapper they were unreachable: it isn't focusable. */}
+            <TaskRow
+              task={task}
+              onStatusPress={onStatusPress}
+              onPress={onOpen}
+              accessibilityActions={[
+                { name: 'cycle', label: 'Change status' },
+                { name: 'complete', label: task.status === 'done' ? 'Mark not done' : 'Mark done' },
+                { name: 'delete', label: 'Delete' },
+              ]}
+              onAccessibilityAction={(e) => {
+                if (e.nativeEvent.actionName === 'cycle') onStatusPress();
+                if (e.nativeEvent.actionName === 'complete') {
+                  if (completeBehavior === 'exit') runExit(1, 'complete');
+                  else onComplete(task);
+                }
+                if (e.nativeEvent.actionName === 'delete') runExit(1, 'delete');
+              }}
+            />
           </View>
         </Animated.View>
       </GestureDetector>

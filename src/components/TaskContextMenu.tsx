@@ -6,7 +6,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-na
 
 import { TaskRow } from '@/components/TaskRow';
 import type { RowAnchor, TaskWithCategory } from '@/lib/types';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { colors, minTouchTarget, radius, spacing } from '@/theme/tokens';
 import { fonts, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -18,9 +18,9 @@ interface Props {
 }
 
 const CARD_GAP = 8;
-// Two action rows + divider — used only to decide whether the card opens
-// above or below the anchor before the card itself has been measured.
-const CARD_HEIGHT_ESTIMATE = 104;
+// Two 52dp action rows + divider — used only to decide whether the card
+// opens above or below the anchor before the card itself has been measured.
+const CARD_HEIGHT_ESTIMATE = 105;
 
 // Replaces the old bottom-sheet RowActionsSheet: a long-pressed row lifts
 // slightly against a dimmed backdrop, and the Edit/Delete card floats
@@ -60,7 +60,7 @@ export function TaskContextMenu({ task, anchor, onClose, onEdit, onDelete }: Pro
               { top: safeAnchor.y, left: safeAnchor.x, width: safeAnchor.width },
               rowStyle,
             ]}>
-            <TaskRow task={task} onPress={() => {}} />
+            <TaskRow task={task} />
           </Animated.View>
         )}
 
@@ -72,12 +72,20 @@ export function TaskContextMenu({ task, anchor, onClose, onEdit, onDelete }: Pro
               ? { top: safeAnchor.y + safeAnchor.height + CARD_GAP }
               : { top: safeAnchor.y - CARD_GAP - CARD_HEIGHT_ESTIMATE },
           ]}>
-          <Pressable style={styles.action} onPress={onEdit} hitSlop={4}>
+          <Pressable
+            style={styles.action}
+            onPress={onEdit}
+            accessibilityRole="menuitem"
+            android_ripple={{ color: colors.borderSubtle }}>
             <Pencil size={18} color={colors.textPrimary} strokeWidth={1.75} />
             <Text style={styles.actionLabel}>Edit</Text>
           </Pressable>
           <View style={styles.divider} />
-          <Pressable style={styles.action} onPress={onDelete} hitSlop={4}>
+          <Pressable
+            style={styles.action}
+            onPress={onDelete}
+            accessibilityRole="menuitem"
+            android_ripple={{ color: colors.borderSubtle }}>
             <Trash2 size={18} color={colors.danger} strokeWidth={1.75} />
             <Text style={[styles.actionLabel, styles.deleteLabel]}>Delete</Text>
           </Pressable>
@@ -105,7 +113,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    paddingVertical: spacing.md,
+    minHeight: minTouchTarget + spacing.xs,
     paddingHorizontal: spacing.lg,
   },
   actionLabel: {

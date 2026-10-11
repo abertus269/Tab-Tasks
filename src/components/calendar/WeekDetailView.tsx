@@ -1,8 +1,9 @@
 import { ChevronLeft } from 'lucide-react-native';
 import { format } from 'date-fns';
 import { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { IconButton } from '@/components/IconButton';
 import { SwipeableTaskRow } from '@/components/SwipeableTaskRow';
 import { useTasksInRange } from '@/hooks/useTasks';
 import { formatWeekRangeLabel, parseDateString, todayString, weekDays, weekdayAbbr } from '@/lib/dates';
@@ -17,7 +18,8 @@ interface Props {
   onComplete: (task: TaskWithCategory) => void;
   onDelete: (task: TaskWithCategory) => void;
   onLongPress: (task: TaskWithCategory, anchor: RowAnchor) => void;
-  onTaskPress: (task: TaskWithCategory) => void;
+  onTaskStatusPress: (task: TaskWithCategory) => void;
+  onTaskOpen: (task: TaskWithCategory) => void;
   registerExit: RegisterRowExit;
 }
 
@@ -38,7 +40,8 @@ export function WeekDetailView({
   onComplete,
   onDelete,
   onLongPress,
-  onTaskPress,
+  onTaskStatusPress,
+  onTaskOpen,
   registerExit,
 }: Props) {
   const days = useMemo(() => weekDays(weekStart), [weekStart]);
@@ -52,10 +55,8 @@ export function WeekDetailView({
   return (
     <View style={styles.flex}>
       <View style={styles.header}>
-        <Pressable onPress={onBack} hitSlop={12} style={styles.backButton}>
-          <ChevronLeft size={22} color={colors.textSecondary} strokeWidth={1.75} />
-        </Pressable>
-        <Text style={styles.headerLabel} numberOfLines={1}>
+        <IconButton icon={ChevronLeft} label="Back to weeks" onPress={onBack} />
+        <Text style={styles.headerLabel} numberOfLines={1} accessibilityRole="header">
           {formatWeekRangeLabel(weekStart)}
         </Text>
       </View>
@@ -68,7 +69,8 @@ export function WeekDetailView({
             onComplete={onComplete}
             onDelete={onDelete}
             onLongPress={onLongPress}
-            onTaskPress={onTaskPress}
+            onTaskStatusPress={onTaskStatusPress}
+            onTaskOpen={onTaskOpen}
             registerExit={registerExit}
           />
         ))}
@@ -83,18 +85,21 @@ interface DayBlockProps {
   onComplete: (task: TaskWithCategory) => void;
   onDelete: (task: TaskWithCategory) => void;
   onLongPress: (task: TaskWithCategory, anchor: RowAnchor) => void;
-  onTaskPress: (task: TaskWithCategory) => void;
+  onTaskStatusPress: (task: TaskWithCategory) => void;
+  onTaskOpen: (task: TaskWithCategory) => void;
   registerExit: RegisterRowExit;
 }
 
-function DayBlock({ item, completeBehavior, onComplete, onDelete, onLongPress, onTaskPress, registerExit }: DayBlockProps) {
+function DayBlock({ item, completeBehavior, onComplete, onDelete, onLongPress, onTaskStatusPress, onTaskOpen, registerExit }: DayBlockProps) {
   const date = parseDateString(item.date);
   const isToday = item.date === todayString();
   const label = `${weekdayAbbr(date)} · ${format(date, 'MMM d')}${isToday ? ' · Today' : ''}`;
 
   return (
     <View>
-      <Text style={[styles.dayHeader, isToday && styles.dayHeaderToday]}>{label}</Text>
+      <Text style={[styles.dayHeader, isToday && styles.dayHeaderToday]} accessibilityRole="header">
+        {label}
+      </Text>
       {item.tasks.length === 0 ? (
         <Text style={styles.emptyDay}>No tasks</Text>
       ) : (
@@ -103,7 +108,8 @@ function DayBlock({ item, completeBehavior, onComplete, onDelete, onLongPress, o
             key={task.id}
             task={task}
             completeBehavior={completeBehavior}
-            onPress={() => onTaskPress(task)}
+            onStatusPress={() => onTaskStatusPress(task)}
+            onOpen={() => onTaskOpen(task)}
             onComplete={onComplete}
             onDelete={onDelete}
             onLongPress={onLongPress}
@@ -120,12 +126,8 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-  },
-  backButton: {
-    padding: spacing.xs,
+    gap: spacing.xs,
+    paddingHorizontal: spacing.xs,
   },
   headerLabel: {
     flex: 1,

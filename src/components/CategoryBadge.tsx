@@ -11,7 +11,8 @@ interface Props {
 
 // DESIGN.md §5 — colored dot or filled rounded-square badge + Lucide glyph + name.
 export function CategoryBadge({ category }: Props) {
-  const color = category?.color ?? colors.borderSubtle;
+  // borderSubtle was 1.2:1 against the row — an invisible dot.
+  const color = category?.color ?? colors.borderStrong;
   const label = category?.name ?? 'Uncategorized';
 
   return (

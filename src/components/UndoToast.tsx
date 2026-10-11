@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text } from 'react-native';
 import Animated, { FadeInDown, FadeOutDown } from 'react-native-reanimated';
 
-import { colors, radius, spacing } from '@/theme/tokens';
+import { colors, minTouchTarget, radius, spacing } from '@/theme/tokens';
 import { fonts, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -17,9 +17,15 @@ export function UndoToast({ visible, message, onUndo }: Props) {
   if (!visible) return null;
 
   return (
-    <Animated.View entering={FadeInDown.duration(180)} exiting={FadeOutDown.duration(150)} style={styles.toast}>
+    <Animated.View
+      entering={FadeInDown.duration(180)}
+      exiting={FadeOutDown.duration(150)}
+      style={styles.toast}
+      // Announces "Task deleted" etc. the moment it appears — the toast is
+      // otherwise invisible to TalkBack until focus happens to land on it.
+      accessibilityLiveRegion="polite">
       <Text style={styles.message}>{message}</Text>
-      <Pressable onPress={onUndo} hitSlop={8}>
+      <Pressable onPress={onUndo} style={styles.undoTarget} accessibilityRole="button">
         <Text style={styles.undo}>Undo</Text>
       </Pressable>
     </Animated.View>
@@ -37,8 +43,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: colors.bgSurfaceRaised,
     borderRadius: radius.pill,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingLeft: spacing.lg,
+    paddingRight: spacing.xs,
+    paddingVertical: spacing.xs,
+  },
+  undoTarget: {
+    minHeight: minTouchTarget,
+    paddingHorizontal: spacing.md,
+    justifyContent: 'center',
   },
   message: {
     fontFamily: fonts.body,

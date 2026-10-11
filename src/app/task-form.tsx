@@ -1,20 +1,27 @@
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { type NavigationAction, usePreventRemove } from 'expo-router/react-navigation';
 import { Bell, Calendar, Check, Clock, Trash2, X } from 'lucide-react-native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CategoryPicker } from '@/components/CategoryPicker';
+import { DataText } from '@/components/DataText';
+import { DiscardChangesPrompt } from '@/components/DiscardChangesPrompt';
 import { DynamicIcon } from '@/components/DynamicIcon';
+import { FilterPill } from '@/components/FilterPill';
+import { IconButton } from '@/components/IconButton';
 import { IconPicker } from '@/components/IconPicker';
 import { createTask, deleteTask, updateTask } from '@/db/mutations';
 import { useTask } from '@/hooks/useTasks';
 import { formatDateLabel, formatTime12h, parseDateString, toDateString, todayString } from '@/lib/dates';
+import { iconLabel } from '@/lib/icons';
 import { ensureNotificationPermission } from '@/lib/notifications';
-import { cycleReminderOption, reminderLabel } from '@/lib/reminders';
+import { REMINDER_OPTIONS, UNTIMED_REMINDER_HOUR } from '@/lib/reminders';
 import type { TaskWithCategory } from '@/lib/types';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { startUndoWindow } from '@/store/undo';
+import { colors, minTouchTarget, radius, spacing } from '@/theme/tokens';
 import { fonts, fontSize } from '@/theme/typography';
 
 // SPEC.md §6 — Title (required) · Due date (required) · Due time (optional) ·
@@ -53,6 +60,7 @@ interface BodyProps {
 
 function TaskFormBody({ editingId, initialTask, defaultDueDate }: BodyProps) {
   const router = useRouter();
+  const navigation = useNavigation();
   const isEditing = !!editingId;
 
   const [title, setTitle] = useState(initialTask?.title ?? '');
@@ -67,10 +75,36 @@ function TaskFormBody({ editingId, initialTask, defaultDueDate }: BodyProps) {
   );
   const [reminderPermissionDenied, setReminderPermissionDenied] = useState(false);
 
-  const canSave = title.trim().length > 0;
+  // Set once a save or delete has landed, so the screen can close without
+  // tripping the unsaved-changes guard below.
+  const [closing, setClosing] = useState(false);
+  // Guards against a double-tap on Save creating the task twice — the write
+  // is async and the screen stays mounted until it lands.
+  const [saving, setSaving] = useState(false);
+  const [pendingExit, setPendingExit] = useState<NavigationAction | null>(null);
+
+  const isDirty =
+    title !== (initialTask?.title ?? '') ||
+    dueDate !== (initialTask?.dueDate ?? defaultDueDate ?? todayString()) ||
+    dueTime !== (initialTask?.dueTime ?? null) ||
+    description !== (initialTask?.description ?? '') ||
+    categoryId !== (initialTask?.categoryId ?? null) ||
+    icon !== (initialTask?.icon ?? null) ||
+    reminderMinutesBefore !== (initialTask?.reminderMinutesBefore ?? null);
+
+  // Catches every way out — the X button and hardware/gesture Back alike —
+  // so unsaved edits are never thrown away without asking.
+  usePreventRemove(isDirty && !closing, ({ data }) => setPendingExit(data.action));
+
+  useEffect(() => {
+    if (closing) router.back();
+  }, [closing, router]);
+
+  const canSave = title.trim().length > 0 && !saving;
 
   async function handleSave() {
     if (!canSave) return;
+    setSaving(true);
     const input = {
       title: title.trim(),
       dueDate,
@@ -80,27 +114,39 @@ function TaskFormBody({ editingId, initialTask, defaultDueDate }: BodyProps) {
       icon,
       reminderMinutesBefore,
     };
-    if (isEditing && editingId) {
-      await updateTask(editingId, input);
-    } else {
-      await createTask(input);
+    try {
+      if (isEditing && editingId) {
+        await updateTask(editingId, input);
+      } else {
+        await createTask(input);
+      }
+    } catch (error) {
+      setSaving(false);
+      throw error;
     }
-    router.back();
+    setClosing(true);
   }
 
+  // Same delete-with-undo as a swipe or the long-press menu: the Undo toast
+  // shows on whichever list this form returns to (src/store/undo.ts).
   async function handleDelete() {
-    if (editingId) {
-      await deleteTask(editingId);
-      router.back();
-    }
+    if (!editingId || !initialTask) return;
+    await deleteTask(editingId);
+    startUndoWindow({ kind: 'delete', task: initialTask });
+    setClosing(true);
+  }
+
+  function discardChanges() {
+    const action = pendingExit;
+    setPendingExit(null);
+    if (action) navigation.dispatch(action);
   }
 
   // Requesting notification permission at launch is the fastest way to get
   // permanently denied — Android 13+'s prompt should appear once, tied to the
   // exact moment the user actually wants a reminder. A denial always reverts
   // to None rather than leaving a stored offset that can never fire.
-  async function handleReminderPress() {
-    const next = cycleReminderOption(reminderMinutesBefore);
+  async function handleReminderSelect(next: number | null) {
     if (next === null) {
       setReminderPermissionDenied(false);
       setReminderMinutesBefore(null);
@@ -152,13 +198,18 @@ function TaskFormBody({ editingId, initialTask, defaultDueDate }: BodyProps) {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <X size={22} color={colors.textSecondary} strokeWidth={1.75} />
-        </Pressable>
-        <Text style={styles.headerTitle}>{isEditing ? 'Edit task' : 'New task'}</Text>
-        <Pressable onPress={handleSave} disabled={!canSave} hitSlop={8} accessibilityLabel="Save task">
-          <Check size={22} color={canSave ? colors.accentPrimary : colors.textMuted} strokeWidth={2.5} />
-        </Pressable>
+        <IconButton icon={X} label="Close" onPress={() => router.back()} />
+        <Text style={styles.headerTitle} accessibilityRole="header">
+          {isEditing ? 'Edit task' : 'New task'}
+        </Text>
+        <IconButton
+          icon={Check}
+          label="Save task"
+          onPress={handleSave}
+          disabled={!canSave}
+          color={canSave ? colors.accentPrimary : colors.textMuted}
+          strokeWidth={2.25}
+        />
       </View>
 
       <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
@@ -169,32 +220,63 @@ function TaskFormBody({ editingId, initialTask, defaultDueDate }: BodyProps) {
           placeholderTextColor={colors.textMuted}
           style={styles.titleInput}
           autoFocus={!isEditing}
+          accessibilityLabel="Task title"
         />
 
         <View style={styles.fieldRow}>
-          <Pressable onPress={openDatePicker} style={styles.fieldButton}>
+          <Pressable
+            onPress={openDatePicker}
+            style={styles.fieldButton}
+            accessibilityRole="button"
+            accessibilityLabel={`Due date, ${formatDateLabel(dueDate)}`}>
             <Calendar size={16} color={colors.textSecondary} strokeWidth={1.75} />
-            <Text style={styles.fieldButtonLabel}>{formatDateLabel(dueDate)}</Text>
+            <DataText style={styles.fieldButtonLabel}>{formatDateLabel(dueDate)}</DataText>
           </Pressable>
-          <Pressable onPress={openTimePicker} style={styles.fieldButton}>
+          <Pressable
+            onPress={openTimePicker}
+            style={styles.fieldButton}
+            accessibilityRole="button"
+            accessibilityLabel={`Due time, ${dueTime ? formatTime12h(dueTime) : 'none'}`}>
             <Clock size={16} color={colors.textSecondary} strokeWidth={1.75} />
-            <Text style={styles.fieldButtonLabel}>{dueTime ? formatTime12h(dueTime) : 'No time'}</Text>
+            <DataText style={styles.fieldButtonLabel}>{dueTime ? formatTime12h(dueTime) : 'No time'}</DataText>
           </Pressable>
           {dueTime && (
-            <Pressable onPress={() => setDueTime(null)} hitSlop={8} style={styles.clearTime}>
-              <X size={16} color={colors.textMuted} strokeWidth={1.75} />
-            </Pressable>
+            <IconButton icon={X} label="Clear due time" onPress={() => setDueTime(null)} size={18} />
           )}
         </View>
 
         <View>
-          <Text style={styles.label}>Reminder</Text>
-          <Pressable onPress={handleReminderPress} style={styles.fieldButton}>
-            <Bell size={16} color={colors.textSecondary} strokeWidth={1.75} />
-            <Text style={styles.fieldButtonLabel}>{reminderLabel(reminderMinutesBefore)}</Text>
-          </Pressable>
-          {reminderPermissionDenied && (
-            <Text style={styles.reminderWarning}>Reminders need notification permission.</Text>
+          <View style={styles.labelRow}>
+            <Bell size={14} color={colors.textSecondary} strokeWidth={1.75} />
+            <Text style={[styles.label, styles.labelInRow]}>Reminder</Text>
+          </View>
+          {/* Every option visible at once — the old single field cycled
+              through five hidden values one tap at a time. */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipRow}
+            keyboardShouldPersistTaps="handled">
+            {REMINDER_OPTIONS.map((option) => (
+              <FilterPill
+                key={option.label}
+                label={option.label}
+                selected={reminderMinutesBefore === option.minutesBefore}
+                onPress={() => handleReminderSelect(option.minutesBefore)}
+              />
+            ))}
+          </ScrollView>
+          {reminderPermissionDenied ? (
+            <Text style={styles.reminderWarning} accessibilityLiveRegion="polite">
+              Reminders need notification permission. Allow it in system settings, then pick again.
+            </Text>
+          ) : (
+            reminderMinutesBefore !== null &&
+            !dueTime && (
+              <Text style={styles.reminderHint}>
+                No due time set, so this counts from {UNTIMED_REMINDER_HOUR}:00 AM on the due date.
+              </Text>
+            )
           )}
         </View>
 
@@ -203,6 +285,7 @@ function TaskFormBody({ editingId, initialTask, defaultDueDate }: BodyProps) {
           onChangeText={setDescription}
           placeholder="Description (optional)"
           placeholderTextColor={colors.textMuted}
+          accessibilityLabel="Description"
           style={styles.descriptionInput}
           multiline
         />
@@ -211,7 +294,11 @@ function TaskFormBody({ editingId, initialTask, defaultDueDate }: BodyProps) {
 
         <View>
           <Text style={styles.label}>Icon</Text>
-          <Pressable onPress={() => setIconPickerVisible(true)} style={styles.iconButton}>
+          <Pressable
+            onPress={() => setIconPickerVisible(true)}
+            style={styles.iconButton}
+            accessibilityRole="button"
+            accessibilityLabel={`Task icon, ${icon ? iconLabel(icon) : 'none'}`}>
             {icon ? (
               <DynamicIcon name={icon} size={22} color={colors.textPrimary} strokeWidth={1.75} />
             ) : (
@@ -221,12 +308,18 @@ function TaskFormBody({ editingId, initialTask, defaultDueDate }: BodyProps) {
         </View>
 
         {isEditing && (
-          <Pressable onPress={handleDelete} style={styles.deleteButton}>
+          <Pressable onPress={handleDelete} style={styles.deleteButton} accessibilityRole="button">
             <Trash2 size={16} color={colors.danger} strokeWidth={1.75} />
             <Text style={styles.deleteLabel}>Delete task</Text>
           </Pressable>
         )}
       </ScrollView>
+
+      <DiscardChangesPrompt
+        visible={!!pendingExit}
+        onKeepEditing={() => setPendingExit(null)}
+        onDiscard={discardChanges}
+      />
 
       <IconPicker
         visible={iconPickerVisible}
@@ -250,8 +343,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    // IconButton's 48dp target already carries ~13dp of inset around the glyph.
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs,
   },
   headerTitle: {
     fontFamily: fonts.heading,
@@ -267,7 +361,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.heading,
     color: colors.textPrimary,
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
+    borderBottomColor: colors.borderStrong,
     paddingBottom: spacing.sm,
   },
   fieldRow: {
@@ -282,20 +376,36 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgSurface,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    minHeight: minTouchTarget,
   },
   fieldButtonLabel: {
-    fontFamily: fonts.mono,
-    fontSize: fontSize.caption,
+    fontSize: fontSize.body,
     color: colors.textPrimary,
   },
-  clearTime: {
-    padding: spacing.xs,
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  labelInRow: {
+    marginBottom: 0,
+  },
+  chipRow: {
+    gap: spacing.sm,
+    // Android drops touches outside a ScrollView's bounds, so the chips'
+    // 6dp vertical hitSlop needs real padding to land in.
+    paddingVertical: spacing.sm,
   },
   reminderWarning: {
     fontFamily: fonts.body,
     fontSize: fontSize.caption,
     color: colors.danger,
+    marginTop: spacing.xs,
+  },
+  reminderHint: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.caption,
+    color: colors.textSecondary,
     marginTop: spacing.xs,
   },
   descriptionInput: {

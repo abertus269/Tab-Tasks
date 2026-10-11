@@ -5,8 +5,9 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { CategoryEditSheet } from '@/components/CategoryEditSheet';
 import { FilterPill } from '@/components/FilterPill';
+import { IconButton } from '@/components/IconButton';
 import { useCategories } from '@/hooks/useCategories';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { colors, iconSize, radius, spacing } from '@/theme/tokens';
 import { fonts, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -26,9 +27,12 @@ export function CategoryPicker({ selectedCategoryId, onSelect }: Props) {
     <View>
       <View style={styles.labelRow}>
         <Text style={styles.label}>Category</Text>
-        <Pressable onPress={() => router.push('/category-manager')} hitSlop={8}>
-          <Settings2 size={16} color={colors.textSecondary} strokeWidth={1.75} />
-        </Pressable>
+        <IconButton
+          icon={Settings2}
+          label="Manage categories"
+          onPress={() => router.push('/category-manager')}
+          size={iconSize.inline + 2}
+        />
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
@@ -43,7 +47,11 @@ export function CategoryPicker({ selectedCategoryId, onSelect }: Props) {
             onPress={() => onSelect(c.id)}
           />
         ))}
-        <Pressable onPress={() => setCreating(true)} style={styles.addPill}>
+        <Pressable
+          onPress={() => setCreating(true)}
+          style={styles.addPill}
+          hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+          accessibilityRole="button">
           <Plus size={14} color={colors.textSecondary} strokeWidth={2} />
           <Text style={styles.addLabel}>Add category</Text>
         </Pressable>
@@ -67,7 +75,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.sm,
+    // Negative margins absorb the manage button's 48dp target so the label
+    // row keeps its visual height and the glyph stays flush with the edge.
+    marginTop: -spacing.md,
+    marginRight: -spacing.md,
+    marginBottom: -spacing.md,
   },
   label: {
     fontFamily: fonts.bodyMedium,
@@ -76,17 +88,19 @@ const styles = StyleSheet.create({
   },
   row: {
     gap: spacing.sm,
-    paddingBottom: spacing.xs,
+    // Android drops touches outside a ScrollView's bounds, so the chips'
+    // 6dp vertical hitSlop needs real padding to land in.
+    paddingVertical: spacing.sm,
   },
   addPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
+    minHeight: 36,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
+    borderColor: colors.borderStrong,
     borderStyle: 'dashed',
   },
   addLabel: {
