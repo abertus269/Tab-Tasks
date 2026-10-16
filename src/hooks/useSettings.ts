@@ -9,10 +9,16 @@ import { settings } from '@/db/schema';
 // the same key instead of duplicating the string.
 export const TAP_CYCLES_STATUS_KEY = 'tapCyclesStatus';
 
+// Off by default: a control that looks like a checkbox finishes the task on
+// the first tap (PRODUCT.md principle 4). "Now" is something you start on
+// purpose (long-press a task → Start), not a stop you pass through on the
+// way to done. Turning this on restores the old todo → Now → done cycle.
+// Shared with the widget (src/lib/widgetData.ts) so the two never disagree.
+export const TAP_CYCLES_STATUS_DEFAULT = false;
+
 export interface AppSettings {
-  // Tapping a row walks todo -> active -> done -> todo. Off, a tap is a plain
-  // done/not-done toggle. Defaults to on: the whole point of the setting is
-  // to let a user opt back OUT of the new cycling behavior.
+  // On, tapping the status square walks todo -> active -> done -> todo. Off
+  // (the default), a tap is a plain done/not-done toggle.
   tapCyclesStatus: boolean;
   setTapCyclesStatus: (value: boolean) => void;
 }
@@ -25,7 +31,7 @@ export function useSettings(): AppSettings {
 
   const tapCyclesStatus = useMemo(() => {
     const row = (data ?? []).find((r) => r.key === TAP_CYCLES_STATUS_KEY);
-    return row ? row.value === 'true' : true;
+    return row ? row.value === 'true' : TAP_CYCLES_STATUS_DEFAULT;
   }, [data]);
 
   return {

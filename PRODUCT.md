@@ -26,7 +26,9 @@ app daily and trusts that nothing due today is hidden from them.
 - One unified list, sorted by due date, with a Today divider that splits
   overdue from today and later. It is never split into per-category sections.
 - A three-state task status (to do → active → done), so "what I'm doing right
-  now" is distinct from "what's left".
+  now" is distinct from "what's left". One tap on a task's box finishes it;
+  "Now" is started on purpose (long-press → Start) and pinned in a Now card
+  above the list, so it never costs a finishing tap an extra step.
 - Local-first and private: no account, no backend, no sync.
 
 ## Operating Context

@@ -8,7 +8,14 @@ import {
   Text,
   View,
 } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { CategoryBadge } from '@/components/CategoryBadge';
 import { DataText } from '@/components/DataText';
@@ -21,7 +28,15 @@ import { fonts, fontSize } from '@/theme/typography';
 
 interface Props {
   task: TaskWithCategory;
-  // The status square — cycles todo → active → done (src/lib/status.ts).
+  // 'card' is the row's own surface. 'embedded' is the same row laid flat
+  // inside another surface (the Now card) — no fill, no border, no inline
+  // "Now" label, since the card around it already says so. Cards never nest.
+  variant?: 'card' | 'embedded';
+  // The row is being finished right now: show the check before the row slides
+  // out, so completing has a beat of its own (SwipeableTaskRow sets this).
+  completing?: boolean;
+  // The status square. By default it finishes the task; with the cycle
+  // setting on it steps todo → active → done (src/lib/status.ts).
   onStatusPress?: () => void;
   // The rest of the row — opens the task in the edit form.
   onPress?: () => void;
@@ -31,7 +46,7 @@ interface Props {
 
 const STATUS_SPOKEN: Record<TaskStatus, string> = {
   todo: 'to do',
-  active: 'active',
+  active: 'in progress',
   done: 'done',
 };
 
@@ -41,7 +56,15 @@ const STATUS_SPOKEN: Record<TaskStatus, string> = {
 // itself changed the task's status, which caught out anyone who tapped
 // to open a task. Swipe and long-press are layered on top by
 // SwipeableTaskRow and don't interfere with either tap.
-export function TaskRow({ task, onStatusPress, onPress, accessibilityActions, onAccessibilityAction }: Props) {
+export function TaskRow({
+  task,
+  variant = 'card',
+  completing = false,
+  onStatusPress,
+  onPress,
+  accessibilityActions,
+  onAccessibilityAction,
+}: Props) {
   // Always show the due date, not just the time — this list merges every
   // date together, and a row's position relative to the today-divider isn't
   // enough on its own to tell a future task from one due today.
@@ -52,21 +75,28 @@ export function TaskRow({ task, onStatusPress, onPress, accessibilityActions, on
   const isDone = task.status === 'done';
   const isActive = task.status === 'active';
   const isOverdue = !isDone && task.dueDate < todayString();
+  const isEmbedded = variant === 'embedded';
+  // The square reads as done while the row is mid-finish, too.
+  const showsDone = isDone || completing;
 
   // A small press-in-and-spring on the square whenever the status actually
-  // changes — the moment of ticking something off gets a beat of its own
-  // instead of a silent color swap. Skipped on first mount, so rows don't
-  // all pop as a list renders.
+  // changes (or the row starts finishing) — the moment of ticking something
+  // off gets a beat of its own instead of a silent color swap. Skipped on
+  // first mount, so rows don't all pop as a list renders, and skipped
+  // entirely when the system asks for reduced motion.
+  const reduceMotion = useReducedMotion();
   const squareScale = useSharedValue(1);
-  const previousStatus = useRef(task.status);
+  const previousLook = useRef(`${task.status}:${completing}`);
   useEffect(() => {
-    if (previousStatus.current === task.status) return;
-    previousStatus.current = task.status;
+    const look = `${task.status}:${completing}`;
+    if (previousLook.current === look) return;
+    previousLook.current = look;
+    if (reduceMotion) return;
     squareScale.value = withSequence(
       withTiming(0.78, { duration: 80 }),
       withSpring(1, { damping: 9, stiffness: 320 }),
     );
-  }, [task.status, squareScale]);
+  }, [task.status, completing, reduceMotion, squareScale]);
   const squareStyle = useAnimatedStyle(() => ({ transform: [{ scale: squareScale.value }] }));
 
   const rowLabel = [
@@ -84,7 +114,12 @@ export function TaskRow({ task, onStatusPress, onPress, accessibilityActions, on
     <Pressable
       onPress={onPress}
       disabled={!onPress}
-      style={({ pressed }) => [styles.row, isActive && styles.rowActive, pressed && styles.rowPressed]}
+      style={({ pressed }) => [
+        styles.row,
+        isActive && !isEmbedded && styles.rowActive,
+        isEmbedded && styles.rowEmbedded,
+        pressed && !isEmbedded && styles.rowPressed,
+      ]}
       android_ripple={{ color: colors.borderSubtle }}
       accessibilityRole="button"
       accessibilityLabel={rowLabel}
@@ -99,9 +134,15 @@ export function TaskRow({ task, onStatusPress, onPress, accessibilityActions, on
         accessibilityLabel={`Status, ${STATUS_SPOKEN[task.status]}`}
         accessibilityState={{ checked: isDone ? true : task.status === 'active' ? 'mixed' : false }}>
         <Animated.View
-          style={[styles.checkbox, isActive && styles.checkboxActive, isDone && styles.checkboxChecked, squareStyle]}>
-          {isDone && <Check size={14} color={colors.bgBase} strokeWidth={3} />}
-          {isActive && <View style={styles.checkboxActiveDot} />}
+          style={[
+            styles.checkbox,
+            isActive && !showsDone && styles.checkboxActive,
+            isDone && styles.checkboxDone,
+            completing && styles.checkboxCompleting,
+            squareStyle,
+          ]}>
+          {showsDone && <Check size={14} color={colors.bgBase} strokeWidth={3} />}
+          {isActive && !showsDone && <View style={styles.checkboxActiveDot} />}
         </Animated.View>
       </Pressable>
 
@@ -111,11 +152,14 @@ export function TaskRow({ task, onStatusPress, onPress, accessibilityActions, on
       </View>
 
       <View style={styles.content} importantForAccessibility="no-hide-descendants">
-        <Text style={[styles.title, isDone && styles.titleCompleted]} numberOfLines={1}>
+        {/* Two lines, not one: at a larger system font a long title used to
+            be cut off with no way to read the rest short of opening it. */}
+        <Text style={[styles.title, isDone && styles.titleCompleted]} numberOfLines={2}>
           {task.title}
         </Text>
+        {/* Wraps instead of overflowing the card at large font sizes. */}
         <View style={styles.metaRow}>
-          {isActive && (
+          {isActive && !isEmbedded && (
             <>
               {/* Spelled out, not only tinted — the state can't rest on color alone. */}
               <Text style={styles.nowLabel}>Now</Text>
@@ -124,8 +168,12 @@ export function TaskRow({ task, onStatusPress, onPress, accessibilityActions, on
           )}
           <CategoryBadge category={task.category} />
           <Text style={styles.metaDot}>·</Text>
-          <DataText style={[styles.dueTime, isOverdue && styles.dueOverdue]}>{dueLabel}</DataText>
-          {hasReminder && <Bell size={12} color={colors.textSecondary} strokeWidth={1.75} />}
+          {/* The bell travels with the due label, so a wrapped line never
+              leaves it alone on a row of its own. */}
+          <View style={styles.dueGroup}>
+            <DataText style={[styles.dueTime, isOverdue && styles.dueOverdue]}>{dueLabel}</DataText>
+            {hasReminder && <Bell size={12} color={colors.textSecondary} strokeWidth={1.75} />}
+          </View>
         </View>
       </View>
     </Pressable>
@@ -150,6 +198,9 @@ const styles = StyleSheet.create({
   rowActive: {
     backgroundColor: colors.bgActive,
     borderColor: colors.borderActive,
+  },
+  rowEmbedded: {
+    backgroundColor: 'transparent',
   },
   rowPressed: {
     backgroundColor: colors.bgSurfaceRaised,
@@ -178,7 +229,16 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: colors.accentPrimary,
   },
-  checkboxChecked: {
+  // A finished task recedes: a quiet grey fill, not lime. Lime is for "act
+  // here / now / today" (DESIGN.md §2), and a screen of finished tasks — the
+  // Completed filter — should be the calmest one in the app.
+  checkboxDone: {
+    backgroundColor: colors.textMuted,
+    borderColor: colors.textMuted,
+  },
+  // The one lime moment of finishing: the tick lands in the accent for the
+  // beat before the row slides away.
+  checkboxCompleting: {
     backgroundColor: colors.accentPrimary,
     borderColor: colors.accentPrimary,
   },
@@ -204,7 +264,15 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    columnGap: spacing.xs,
+    rowGap: spacing.xs / 2,
+  },
+  dueGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.xs,
+    flexShrink: 1,
   },
   metaDot: {
     fontFamily: fonts.body,

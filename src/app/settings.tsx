@@ -42,19 +42,20 @@ export default function SettingsScreen() {
 
       <View style={styles.row}>
         <View style={styles.rowText}>
-          <Text style={styles.rowTitle}>Status box cycles</Text>
+          <Text style={styles.rowTitle}>Tap steps through Now</Text>
           <Text style={styles.rowSubtitle}>
             {tapCyclesStatus
-              ? 'Each tap steps through to do → active → done.'
-              : 'Off: one tap marks a task done.'}
+              ? 'Each tap steps a task through to do → Now → done.'
+              : 'Off: one tap finishes a task. Long-press a task to start it.'}
           </Text>
         </View>
         <Switch
           value={tapCyclesStatus}
           onValueChange={setTapCyclesStatus}
           trackColor={{ false: colors.borderStrong, true: colors.accentPrimary }}
-          accessibilityLabel="Status box cycles through to do, active, done"
-          thumbColor={colors.textPrimary}
+          accessibilityLabel="Tap steps through to do, now, done"
+          // Dark on the lime track: the light thumb was 1.05:1 against it.
+          thumbColor={tapCyclesStatus ? colors.bgBase : colors.textPrimary}
         />
       </View>
 

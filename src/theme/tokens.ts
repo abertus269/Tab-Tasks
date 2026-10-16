@@ -30,7 +30,9 @@ export const colors = {
 
 // DESIGN.md §2 — curated 6–8 hue swatch users assign per category, pulled from
 // reference #2's pastel set (lavender, cream/yellow, mint) plus a few more,
-// tuned to stay distinct against bgBase without clashing.
+// tuned to stay distinct against bgBase without clashing. Lime is not one of
+// them: accentPrimary means "act here / now / today", and a category badge in
+// the same color read as that accent (DESIGN.md §2, lime discipline).
 export const categoryColors = [
   '#C7B8FF', // lavender
   '#FFE9A8', // cream/yellow
@@ -38,12 +40,12 @@ export const categoryColors = [
   '#FFB4C6', // blush pink
   '#8FD3F4', // sky blue
   '#FFC98F', // peach
-  '#D6FF5C', // lime (accentPrimary — offered as an option too)
   '#B8C4FF', // periwinkle
 ] as const;
 
 // Spoken names for the swatch — a color-only button has nothing else for
-// TalkBack to announce.
+// TalkBack to announce. Lime stays listed: categories saved while it was still
+// on offer keep their color (stored values are never rewritten).
 export const categoryColorNames: Record<string, string> = {
   '#C7B8FF': 'Lavender',
   '#FFE9A8': 'Cream',

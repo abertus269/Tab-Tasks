@@ -6,8 +6,8 @@ import { colors, spacing } from '@/theme/tokens';
 import { fonts, fontSize } from '@/theme/typography';
 
 interface Props {
-  grid: string[][]; // 6x7 'YYYY-MM-DD' strings, from lib/dates.monthGrid
-  currentMonthPrefix: string; // 'YYYY-MM' — cells outside this are dimmed
+  grid: string[][]; // 4–6 rows of 7 'YYYY-MM-DD' strings, from lib/dates.monthGrid
+  currentMonthPrefix: string; // 'YYYY-MM' — cells outside this are left blank
   selectedDate: string;
   todayDate: string;
   taskCounts: Record<string, number>;
@@ -15,9 +15,10 @@ interface Props {
   showWeekdayHeader?: boolean;
 }
 
-// DESIGN.md §6 — standard 7-column calendar. Selected date: solid
-// accent-primary filled circle behind the number. Dates with tasks get a
-// small dot indicator.
+// DESIGN.md §6 — standard 7-column calendar. Selected date: a solid
+// neutral-inverse circle behind the number; today: a lime ring, so the two
+// stay distinct when they land on the same day and lime keeps meaning
+// "today". Dates with tasks get a small neutral dot.
 export function MonthGrid({
   grid,
   currentMonthPrefix,
@@ -43,7 +44,10 @@ export function MonthGrid({
       {grid.map((week, i) => (
         <View key={i} style={styles.weekRow}>
           {week.map((date) => {
-            const inMonth = date.startsWith(currentMonthPrefix);
+            // The days either side of the month belong to the neighbouring month
+            // blocks in the continuous scroll — drawing them here too only
+            // repeated the next month's first week as a dimmed row.
+            if (!date.startsWith(currentMonthPrefix)) return <View key={date} style={styles.cell} />;
             const isSelected = date === selectedDate;
             const isToday = date === todayDate;
             const count = taskCounts[date] ?? 0;
@@ -66,7 +70,6 @@ export function MonthGrid({
                   <Text
                     style={[
                       styles.dayNumber,
-                      !inMonth && styles.dayNumberOutOfMonth,
                       isSelected && styles.dayNumberSelected,
                       isToday && !isSelected && styles.dayNumberToday,
                     ]}>
@@ -129,15 +132,12 @@ const styles = StyleSheet.create({
     borderColor: colors.accentPrimary,
   },
   dayCircleSelected: {
-    backgroundColor: colors.accentPrimary,
+    backgroundColor: colors.textPrimary,
   },
   dayNumber: {
     fontFamily: fonts.mono,
     fontSize: fontSize.body,
     color: colors.textPrimary,
-  },
-  dayNumberOutOfMonth: {
-    color: colors.textMuted,
   },
   dayNumberSelected: {
     color: colors.bgBase,
@@ -151,10 +151,12 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: 'transparent',
   },
+  // Neutral: a dot says "something is due", not "something is late" — the
+  // grid doesn't know which, and orange is kept for lateness (DESIGN.md §2).
   dotVisible: {
-    backgroundColor: colors.accentWarm,
+    backgroundColor: colors.textSecondary,
   },
   dotSelected: {
-    backgroundColor: colors.accentPrimary,
+    backgroundColor: colors.textPrimary,
   },
 });

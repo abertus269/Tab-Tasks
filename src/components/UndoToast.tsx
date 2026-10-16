@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text } from 'react-native';
-import Animated, { FadeInDown, FadeOutDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeOutDown, useReducedMotion } from 'react-native-reanimated';
 
 import { colors, minTouchTarget, radius, spacing } from '@/theme/tokens';
 import { fonts, fontSize } from '@/theme/typography';
@@ -14,17 +14,20 @@ interface Props {
 // (what's actually being undone: a delete or a status change) live in
 // useTaskRowActions / src/lib/undo.ts alongside the pending snapshot.
 export function UndoToast({ visible, message, onUndo }: Props) {
+  const reduceMotion = useReducedMotion();
   if (!visible) return null;
 
   return (
     <Animated.View
-      entering={FadeInDown.duration(180)}
-      exiting={FadeOutDown.duration(150)}
+      entering={reduceMotion ? undefined : FadeInDown.duration(180)}
+      exiting={reduceMotion ? undefined : FadeOutDown.duration(150)}
       style={styles.toast}
       // Announces "Task deleted" etc. the moment it appears — the toast is
       // otherwise invisible to TalkBack until focus happens to land on it.
       accessibilityLiveRegion="polite">
-      <Text style={styles.message}>{message}</Text>
+      <Text style={styles.message} numberOfLines={1}>
+        {message}
+      </Text>
       <Pressable onPress={onUndo} style={styles.undoTarget} accessibilityRole="button">
         <Text style={styles.undo}>Undo</Text>
       </Pressable>
@@ -53,6 +56,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   message: {
+    flex: 1,
     fontFamily: fonts.body,
     fontSize: fontSize.body,
     color: colors.textPrimary,

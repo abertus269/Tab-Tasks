@@ -1,7 +1,7 @@
 import { Plus } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text } from 'react-native';
 
-import { colors, radius, spacing } from '@/theme/tokens';
+import { colors, minTouchTarget, radius, spacing } from '@/theme/tokens';
 import { fonts, fontSize } from '@/theme/typography';
 
 interface Props {
@@ -17,9 +17,8 @@ export function AddTaskButton({ onPress }: Props) {
     <Pressable
       onPress={onPress}
       style={styles.button}
-      accessibilityRole="button"
-      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-      <Plus size={16} color={colors.bgBase} strokeWidth={2.5} />
+      accessibilityRole="button">
+      <Plus size={18} color={colors.bgBase} strokeWidth={2.5} />
       <Text style={styles.label}>Add task</Text>
     </Pressable>
   );
@@ -34,14 +33,16 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     backgroundColor: colors.accentPrimary,
     borderRadius: radius.pill,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
+    // A full 48dp pill, not a 36dp one leaning on hitSlop: this is the list's
+    // one-handed way in, so the thing you see is the thing you can hit.
+    minHeight: minTouchTarget,
+    paddingHorizontal: spacing.xl,
     marginTop: spacing.sm,
     marginBottom: spacing.lg,
   },
   label: {
     fontFamily: fonts.bodyMedium,
-    fontSize: fontSize.caption,
+    fontSize: fontSize.body,
     color: colors.bgBase,
   },
 });

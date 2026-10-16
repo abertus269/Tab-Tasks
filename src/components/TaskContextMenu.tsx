@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { Dimensions, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Pencil, Trash2 } from 'lucide-react-native';
+import { Pause, Pencil, Play, Trash2 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { TaskRow } from '@/components/TaskRow';
 import type { RowAnchor, TaskWithCategory } from '@/lib/types';
@@ -15,12 +15,19 @@ interface Props {
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  // Start / Pause — how a task gets into (and out of) the Now card now that a
+  // tap on the status square finishes it. Omitted on screens without a Now.
+  onToggleNow?: () => void;
 }
 
 const CARD_GAP = 8;
-// Two 52dp action rows + divider — used only to decide whether the card
-// opens above or below the anchor before the card itself has been measured.
-const CARD_HEIGHT_ESTIMATE = 105;
+// One 52dp action row per item plus the hairlines between them — used only to
+// decide whether the card opens above or below the anchor before the card
+// itself has been measured.
+const ACTION_HEIGHT = 52;
+function cardHeightEstimate(itemCount: number): number {
+  return ACTION_HEIGHT * itemCount + (itemCount - 1);
+}
 
 // Replaces the old bottom-sheet RowActionsSheet: a long-pressed row lifts
 // slightly against a dimmed backdrop, and the Edit/Delete card floats
@@ -29,16 +36,17 @@ const CARD_HEIGHT_ESTIMATE = 105;
 // the screen. Modal stays mounted with visible={!!anchor} — same pattern as
 // DeleteCategoryPrompt — so the fade-out plays instead of the content just
 // vanishing when the menu closes.
-export function TaskContextMenu({ task, anchor, onClose, onEdit, onDelete }: Props) {
+export function TaskContextMenu({ task, anchor, onClose, onEdit, onDelete, onToggleNow }: Props) {
   const insets = useSafeAreaInsets();
+  const reduceMotion = useReducedMotion();
   const scale = useSharedValue(1);
 
   useEffect(() => {
     if (anchor) {
       scale.value = 1;
-      scale.value = withSpring(1.02, { damping: 16, stiffness: 200 });
+      if (!reduceMotion) scale.value = withSpring(1.02, { damping: 16, stiffness: 200 });
     }
-  }, [anchor, scale]);
+  }, [anchor, reduceMotion, scale]);
 
   const rowStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -46,8 +54,10 @@ export function TaskContextMenu({ task, anchor, onClose, onEdit, onDelete }: Pro
 
   const safeAnchor = anchor ?? { x: 0, y: 0, width: 0, height: 0 };
   const windowHeight = Dimensions.get('window').height;
-  const opensBelow =
-    safeAnchor.y + safeAnchor.height + CARD_GAP + CARD_HEIGHT_ESTIMATE <= windowHeight - insets.bottom;
+  // A done task can't be started or paused — it's finished.
+  const canToggleNow = !!onToggleNow && !!task && task.status !== 'done';
+  const cardHeight = cardHeightEstimate(canToggleNow ? 3 : 2);
+  const opensBelow = safeAnchor.y + safeAnchor.height + CARD_GAP + cardHeight <= windowHeight - insets.bottom;
 
   return (
     <Modal visible={!!anchor} transparent animationType="fade" onRequestClose={onClose}>
@@ -70,8 +80,25 @@ export function TaskContextMenu({ task, anchor, onClose, onEdit, onDelete }: Pro
             { left: safeAnchor.x, width: safeAnchor.width },
             opensBelow
               ? { top: safeAnchor.y + safeAnchor.height + CARD_GAP }
-              : { top: safeAnchor.y - CARD_GAP - CARD_HEIGHT_ESTIMATE },
+              : { top: safeAnchor.y - CARD_GAP - cardHeight },
           ]}>
+          {canToggleNow && (
+            <>
+              <Pressable
+                style={styles.action}
+                onPress={onToggleNow}
+                accessibilityRole="menuitem"
+                android_ripple={{ color: colors.borderSubtle }}>
+                {task?.status === 'active' ? (
+                  <Pause size={18} color={colors.textPrimary} strokeWidth={1.75} />
+                ) : (
+                  <Play size={18} color={colors.textPrimary} strokeWidth={1.75} />
+                )}
+                <Text style={styles.actionLabel}>{task?.status === 'active' ? 'Pause' : 'Start'}</Text>
+              </Pressable>
+              <View style={styles.divider} />
+            </>
+          )}
           <Pressable
             style={styles.action}
             onPress={onEdit}

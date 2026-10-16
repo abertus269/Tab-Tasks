@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 import { db, dbReady } from '@/db/client';
 import { categories, settings, tasks } from '@/db/schema';
 import migrations from '@/drizzle/migrations';
-import { TAP_CYCLES_STATUS_KEY } from '@/hooks/useSettings';
+import { TAP_CYCLES_STATUS_DEFAULT, TAP_CYCLES_STATUS_KEY } from '@/hooks/useSettings';
 
 import { todayString } from './dates';
 import { compareTasks } from './ordering';
@@ -65,5 +65,5 @@ export async function getTapCyclesStatusSetting(): Promise<boolean> {
   await ensureDbReady();
 
   const row = db.select().from(settings).where(eq(settings.key, TAP_CYCLES_STATUS_KEY)).get();
-  return row ? row.value === 'true' : true;
+  return row ? row.value === 'true' : TAP_CYCLES_STATUS_DEFAULT;
 }

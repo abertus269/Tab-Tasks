@@ -50,14 +50,16 @@ const styles = StyleSheet.create({
   },
   segment: {
     flex: 1,
-    // 44 + the track's 2dp padding on each side = a 48dp-tall control.
-    minHeight: minTouchTarget - spacing.xs,
+    // A full 48dp touch target; the track's 2dp padding sits outside it.
+    minHeight: minTouchTarget,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Neutral-inverse, not lime: the selected mode is a state of the view, and
+  // lime is kept for "act here / now / today" (DESIGN.md §2).
   segmentSelected: {
-    backgroundColor: colors.accentPrimary,
+    backgroundColor: colors.textPrimary,
   },
   label: {
     fontFamily: fonts.bodyMedium,

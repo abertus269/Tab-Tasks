@@ -22,6 +22,7 @@ interface Props {
   onLongPress: (task: TaskWithCategory, anchor: RowAnchor) => void;
   onTaskStatusPress: (task: TaskWithCategory) => void;
   onTaskOpen: (task: TaskWithCategory) => void;
+  onToggleNow: (task: TaskWithCategory) => void;
   onAddTask: () => void;
   registerExit: RegisterRowExit;
 }
@@ -39,6 +40,7 @@ export function DayView({
   onLongPress,
   onTaskStatusPress,
   onTaskOpen,
+  onToggleNow,
   onAddTask,
   registerExit,
 }: Props) {
@@ -66,6 +68,7 @@ export function DayView({
             onComplete={onComplete}
             onDelete={onDelete}
             onLongPress={onLongPress}
+            onToggleNow={onToggleNow}
             registerExit={registerExit}
           />
         )}

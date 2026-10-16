@@ -52,6 +52,8 @@ export function useTaskRowActions({ completeBehavior }: { completeBehavior: Comp
     [completeBehavior],
   );
 
+  // The status square's tap. By default it finishes the task (or reopens a
+  // done one); with the cycle setting on it steps todo -> active -> done.
   // In 'exit' mode, any status change that would make the row leave the
   // current view (Tasks tab's not-done list, or the Completed filter)
   // animates it out first — same exit as a swipe — instead of just
@@ -70,6 +72,14 @@ export function useTaskRowActions({ completeBehavior }: { completeBehavior: Comp
     }
     await setTaskStatus(task.id, next);
   }
+
+  // "Now" is started on purpose, never stumbled into by a tap: Start in the
+  // long-press menu (or the row's TalkBack action) moves a task to the Now
+  // card, and Pause sends it back to to do. Always a direct write — the task
+  // stays in the view, it only changes where in it the row is drawn.
+  const toggleNow = useCallback(async (task: TaskWithCategory) => {
+    await setTaskStatus(task.id, task.status === 'active' ? 'todo' : 'active');
+  }, []);
 
   function openMenu(task: TaskWithCategory, anchor: RowAnchor) {
     setMenu({ task, anchor });
@@ -96,6 +106,12 @@ export function useTaskRowActions({ completeBehavior }: { completeBehavior: Comp
     };
   }, []);
 
+  const confirmMenuToggleNow = useCallback(() => {
+    const target = menu?.task;
+    closeMenu();
+    if (target) toggleNow(target);
+  }, [menu, toggleNow]);
+
   const confirmMenuDelete = useCallback(() => {
     const target = menu?.task;
     closeMenu();
@@ -116,6 +132,7 @@ export function useTaskRowActions({ completeBehavior }: { completeBehavior: Comp
     completeBehavior,
     menu,
     cycleStatus,
+    toggleNow,
     completeTask,
     openMenu,
     closeMenu,
@@ -123,6 +140,7 @@ export function useTaskRowActions({ completeBehavior }: { completeBehavior: Comp
     deleteWithUndo,
     registerRowExit,
     confirmMenuDelete,
+    confirmMenuToggleNow,
     pendingUndo,
     undoMessage: undoToastMessage(pendingUndo),
     undo: performUndo,

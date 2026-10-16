@@ -47,7 +47,7 @@
             {
               "name": "TodayTasks",
               "label": "Today's Tasks",
-              "description": "Today's tasks — tap the status dot to cycle, tap a task to open it.",
+              "description": "Today's tasks — tap the box to finish one, tap a task to open it.",
               "minWidth": "110dp",
               "minHeight": "110dp",
               "targetCellWidth": 2,

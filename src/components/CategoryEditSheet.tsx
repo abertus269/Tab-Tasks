@@ -93,9 +93,9 @@ function CategoryEditForm({ category, onClose, onSaved }: FormProps) {
 
           <View style={styles.swatchRow}>
             {categoryColors.map((c) => (
-              // Each swatch owns an equal share of the row (≥47dp on a 411dp
-              // phone) at a full 48dp tall, with the 32dp circle centered in it
-              // — tap targets that tile the row instead of overlapping slop.
+              // Each swatch is a fixed 48×48dp target with the 32dp circle
+              // centered in it; the row wraps on narrow phones instead of
+              // squeezing the targets below 48dp.
               <Pressable
                 key={c}
                 onPress={() => setColor(c)}
@@ -170,6 +170,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm + 2,
+    minHeight: minTouchTarget,
     color: colors.textPrimary,
     fontFamily: fonts.body,
     fontSize: fontSize.body,
@@ -182,11 +183,12 @@ const styles = StyleSheet.create({
   },
   swatchRow: {
     flexDirection: 'row',
-    marginHorizontal: -spacing.xs,
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
   },
   swatchCell: {
-    flex: 1,
-    minHeight: minTouchTarget,
+    width: minTouchTarget,
+    height: minTouchTarget,
     alignItems: 'center',
     justifyContent: 'center',
   },

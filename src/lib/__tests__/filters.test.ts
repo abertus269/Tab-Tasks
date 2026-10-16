@@ -4,6 +4,7 @@ import {
   filterTasks,
   inCategoryScope,
   matchesFilter,
+  splitNowTasks,
   type FilterableTask,
 } from '../filters';
 
@@ -69,6 +70,41 @@ describe('filterTasks', () => {
     expect(filterTasks(tasks, 'all')).toEqual([tasks[0], tasks[2]]);
     expect(filterTasks(tasks, COMPLETED_FILTER)).toEqual([tasks[1]]);
     expect(filterTasks(tasks, 'work')).toEqual([tasks[0]]);
+  });
+});
+
+describe('splitNowTasks', () => {
+  it('lifts only active tasks into now, keeping each half in its incoming order', () => {
+    const tasks = [
+      { id: 'a', status: 'todo' as const },
+      { id: 'b', status: 'active' as const },
+      { id: 'c', status: 'todo' as const },
+      { id: 'd', status: 'active' as const },
+    ];
+    const { now, rest } = splitNowTasks(tasks);
+    expect(now.map((t) => t.id)).toEqual(['b', 'd']);
+    expect(rest.map((t) => t.id)).toEqual(['a', 'c']);
+  });
+
+  it('returns an empty now when nothing is active', () => {
+    const tasks = [{ status: 'todo' as const }, { status: 'done' as const }];
+    const { now, rest } = splitNowTasks(tasks);
+    expect(now).toEqual([]);
+    expect(rest).toEqual(tasks);
+  });
+
+  it('never drops or duplicates a task', () => {
+    const tasks = [
+      { id: 'a', status: 'active' as const },
+      { id: 'b', status: 'todo' as const },
+      { id: 'c', status: 'done' as const },
+    ];
+    const { now, rest } = splitNowTasks(tasks);
+    expect(now.length + rest.length).toBe(tasks.length);
+  });
+
+  it('handles an empty list', () => {
+    expect(splitNowTasks([])).toEqual({ now: [], rest: [] });
   });
 });
 

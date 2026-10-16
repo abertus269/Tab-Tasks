@@ -1,4 +1,14 @@
-import { addDays, addMonths, eachDayOfInterval, format, startOfMonth, startOfWeek, subMonths } from 'date-fns';
+import {
+  addDays,
+  addMonths,
+  differenceInCalendarDays,
+  eachDayOfInterval,
+  format,
+  getDaysInMonth,
+  startOfMonth,
+  startOfWeek,
+  subMonths,
+} from 'date-fns';
 
 export const DATE_FORMAT = 'yyyy-MM-dd';
 
@@ -17,10 +27,6 @@ export function parseDateString(dateStr: string): Date {
 
 export function todayString(): string {
   return toDateString(new Date());
-}
-
-export function currentYearString(): string {
-  return format(new Date(), 'yyyy');
 }
 
 // '14:05' -> '2:05 PM'
@@ -52,14 +58,19 @@ export function weekDays(anchor: Date, weekStartsOn: 0 | 1 = 0): string[] {
   return eachDayOfInterval({ start, end: addDays(start, 6) }).map(toDateString);
 }
 
-// A stable 6x7 grid of 'yyyy-MM-dd' strings (always 42 cells, spanning into the
-// adjacent months at the edges) so the Month view never resizes between a
-// 5-week and 6-week month.
+// The month as rows of 'yyyy-MM-dd' strings — only the weeks it actually
+// needs (4 to 6 rows), whole weeks so every row is 7 wide. The cells before
+// the 1st and after the last day belong to the adjacent months; MonthGrid
+// leaves them blank rather than repeating the next month's first week, which
+// the continuous Month scroll already shows right below.
 export function monthGrid(anchor: Date, weekStartsOn: 0 | 1 = 0): string[][] {
-  const start = startOfWeek(startOfMonth(anchor), { weekStartsOn });
-  const days = eachDayOfInterval({ start, end: addDays(start, 41) }).map(toDateString);
+  const monthStart = startOfMonth(anchor);
+  const start = startOfWeek(monthStart, { weekStartsOn });
+  const leading = differenceInCalendarDays(monthStart, start);
+  const weeks = Math.ceil((leading + getDaysInMonth(monthStart)) / 7);
+  const days = eachDayOfInterval({ start, end: addDays(start, weeks * 7 - 1) }).map(toDateString);
   const rows: string[][] = [];
-  for (let i = 0; i < 42; i += 7) {
+  for (let i = 0; i < days.length; i += 7) {
     rows.push(days.slice(i, i + 7));
   }
   return rows;
@@ -93,18 +104,6 @@ export function continuousMonthRange(anchor: Date, monthsBack: number, monthsFor
   return months;
 }
 
-// The week-start Dates from `weeksBack` weeks before `anchor`'s week through
-// `weeksForward` weeks after it — Week view's list-of-weeks continuous scroll.
-// Parallels continuousMonthRange exactly, one level finer-grained.
-export function continuousWeekRange(anchor: Date, weeksBack: number, weeksForward: number): Date[] {
-  const start = addDays(startOfWeek(anchor, { weekStartsOn: 0 }), -7 * weeksBack);
-  const weeks: Date[] = [];
-  for (let i = 0; i <= weeksBack + weeksForward; i++) {
-    weeks.push(addDays(start, 7 * i));
-  }
-  return weeks;
-}
-
 // "Aug 24 – 30" (same month) / "Aug 31 – Sep 6" (crosses a month) /
 // "Dec 29, 2026 – Jan 4, 2027" (crosses a year, rare but possible) — the
 // week-list row label. Always built from weekDays() so it can never disagree
@@ -123,9 +122,14 @@ export function formatWeekRangeLabel(weekStart: Date, weekStartsOn: 0 | 1 = 0): 
   return `${format(start, 'MMM d')} – ${format(end, 'd')}`;
 }
 
-// Sums a per-date count map (e.g. from useTaskCountsInRange) over an
-// arbitrary list of 'yyyy-MM-dd' keys — pulled out of the week-list view so
-// the aggregation itself is unit-testable independent of React/FlatList.
-export function sumTaskCounts(dayCounts: Record<string, number>, dateStrs: string[]): number {
-  return dateStrs.reduce((sum, d) => sum + (dayCounts[d] ?? 0), 0);
+// Task totals for each month of `year` (index 0 = January), from a per-date
+// count map such as useTaskCountsInRange's — the Year view's month tiles.
+export function monthTotalsForYear(dayCounts: Record<string, number>, year: number): number[] {
+  const totals = new Array<number>(12).fill(0);
+  const prefix = `${year}-`;
+  for (const [date, count] of Object.entries(dayCounts)) {
+    if (!date.startsWith(prefix)) continue;
+    totals[Number(date.slice(5, 7)) - 1] += count;
+  }
+  return totals;
 }

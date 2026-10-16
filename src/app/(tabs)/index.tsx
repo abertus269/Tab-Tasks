@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { EmptyTodayRow, ListDivider } from '@/components/ListDivider';
 import { FilterPill } from '@/components/FilterPill';
 import { IconButton } from '@/components/IconButton';
+import { NowCard } from '@/components/NowCard';
 import { SwipeableTaskRow } from '@/components/SwipeableTaskRow';
 import { TaskContextMenu } from '@/components/TaskContextMenu';
 import { TodayHeader } from '@/components/TodayHeader';
@@ -17,7 +18,14 @@ import { useCategories } from '@/hooks/useCategories';
 import { useTaskRowActions } from '@/hooks/useTaskRowActions';
 import { useAllTasks } from '@/hooks/useTasks';
 import { parseDateString, todayString } from '@/lib/dates';
-import { COMPLETED_FILTER, emptyMessageFor, filterTasks, inCategoryScope, type FilterValue } from '@/lib/filters';
+import {
+  COMPLETED_FILTER,
+  emptyMessageFor,
+  filterTasks,
+  inCategoryScope,
+  splitNowTasks,
+  type FilterValue,
+} from '@/lib/filters';
 import { type RenderRow, withListDividers } from '@/lib/ordering';
 import type { TaskWithCategory } from '@/lib/types';
 import { colors, spacing } from '@/theme/tokens';
@@ -54,14 +62,23 @@ export default function TasksScreen() {
   // whichever view it was in.
   const visibleTasks = useMemo(() => filterTasks(allTasks, activeFilter), [allTasks, activeFilter]);
 
+  // Active tasks lift into the Now card above the list, wherever they fall by
+  // date (src/lib/filters.ts splitNowTasks). The dated list below is the same
+  // merged order minus those tasks. The Completed view has no Now.
+  const { now: nowTasks, rest: listTasks } = useMemo(
+    () => (activeFilter === COMPLETED_FILTER ? { now: [], rest: visibleTasks } : splitNowTasks(visibleTasks)),
+    [visibleTasks, activeFilter],
+  );
+
   // A done list has no "due" structure, so the Completed view skips the
-  // Today/Upcoming dividers entirely — everywhere else keeps them.
+  // Today/Upcoming dividers entirely — everywhere else keeps them. With
+  // nothing left under the Now card, no lone "Today" rule is drawn beneath it.
   const rows: RenderRow<TaskWithCategory>[] = useMemo(() => {
     if (activeFilter === COMPLETED_FILTER) {
-      return visibleTasks.map((task) => ({ type: 'task', task }));
+      return listTasks.map((task) => ({ type: 'task', task }));
     }
-    return withListDividers(visibleTasks, today);
-  }, [visibleTasks, activeFilter, today]);
+    return listTasks.length === 0 ? [] : withListDividers(listTasks, today);
+  }, [listTasks, activeFilter, today]);
 
   // Across every category, regardless of the active filter — the header
   // reports on the day, not on the current view of it.
@@ -124,6 +141,21 @@ export default function TasksScreen() {
             return row.task.id;
           }}
           contentContainerStyle={styles.list}
+          ListHeaderComponent={
+            nowTasks.length > 0 ? (
+              <NowCard
+                tasks={nowTasks}
+                completeBehavior={rowActions.completeBehavior}
+                onStatusPress={rowActions.cycleStatus}
+                onOpen={rowActions.editTask}
+                onComplete={rowActions.completeTask}
+                onDelete={rowActions.deleteWithUndo}
+                onLongPress={rowActions.openMenu}
+                onToggleNow={rowActions.toggleNow}
+                registerExit={rowActions.registerRowExit}
+              />
+            ) : null
+          }
           renderItem={({ item }) => {
             if (item.type === 'divider') return <ListDivider kind={item.kind} />;
             if (item.type === 'emptyToday') return <EmptyTodayRow />;
@@ -136,6 +168,7 @@ export default function TasksScreen() {
                 onComplete={rowActions.completeTask}
                 onDelete={rowActions.deleteWithUndo}
                 onLongPress={rowActions.openMenu}
+                onToggleNow={rowActions.toggleNow}
                 registerExit={rowActions.registerRowExit}
               />
             );
@@ -150,6 +183,7 @@ export default function TasksScreen() {
         onClose={rowActions.closeMenu}
         onEdit={() => rowActions.menu && rowActions.editTask(rowActions.menu.task)}
         onDelete={rowActions.confirmMenuDelete}
+        onToggleNow={rowActions.confirmMenuToggleNow}
       />
 
       <UndoToast visible={!!rowActions.pendingUndo} message={rowActions.undoMessage} onUndo={rowActions.undo} />

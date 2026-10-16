@@ -12,7 +12,9 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   runOnJS,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
+  withDelay,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
@@ -29,18 +31,27 @@ interface Props {
   // that list. 'toggle' (Calendar Day/Week): a completed swipe flips the
   // status in place and springs back — done tasks stay visible there.
   completeBehavior: CompleteBehavior;
-  // Tap on the status square (cycles status) / anywhere else on the row (opens it).
+  // Tap on the status square (finishes the task) / anywhere else on the row (opens it).
   onStatusPress: () => void;
   onOpen: () => void;
   onComplete: (task: TaskWithCategory) => void;
   onDelete: (task: TaskWithCategory) => void;
   onLongPress: (task: TaskWithCategory, anchor: RowAnchor) => void;
+  // Start / Pause — moves the task into or out of the Now card. Offered as a
+  // TalkBack action here and as an item in the long-press menu.
+  onToggleNow?: (task: TaskWithCategory) => void;
   registerExit: RegisterRowExit;
+  // 'embedded' lays the row flat inside the Now card (see TaskRow).
+  variant?: 'card' | 'embedded';
 }
 
 const EXIT_DURATION = 180;
 const COLLAPSE_DURATION = 140;
 const EXIT_OVERSHOOT = 32;
+// How long the lime check holds before a tapped-to-finish row slides away —
+// long enough to register as the moment of completion, short enough that the
+// list never feels like it's waiting.
+const TICK_BEAT = 150;
 
 // Wraps TaskRow with the drag-to-complete + long-press-to-menu gestures from
 // SPEC.md §4/§10. Pan and long-press race each other (Gesture.Race): a
@@ -48,8 +59,8 @@ const EXIT_OVERSHOOT = 32;
 // can fire, and holding still keeps the drag under long-press's 12px
 // maxDistance, so they can never both activate. Neither steals a plain tap —
 // TaskRow's own Pressables underneath only lose the touch once one of these
-// gestures actually activates, so tapping the status square (cycles status)
-// or the rest of the row (opens the task) is unaffected.
+// gestures actually activates, so tapping the status square (finishes the
+// task) or the rest of the row (opens the task) is unaffected.
 //
 // A completed swipe marks the task done (or undoes it back to todo if it was
 // already done — swipe is a direct toggle, independent of the tap-cycle
@@ -69,8 +80,12 @@ export function SwipeableTaskRow({
   onComplete,
   onDelete,
   onLongPress,
+  onToggleNow,
   registerExit,
+  variant = 'card',
 }: Props) {
+  const reduceMotion = useReducedMotion();
+  const [completing, setCompleting] = useState(false);
   const measureRef = useRef<View>(null);
   const [rowWidth, setRowWidth] = useState(0);
   const [rowHeight, setRowHeight] = useState<number | null>(null);
@@ -95,19 +110,31 @@ export function SwipeableTaskRow({
     (direction: 1 | -1, reason: ExitReason) => {
       if (exiting.value) return;
       exiting.value = true;
-      translateX.value = withTiming(
-        direction * (rowWidth + EXIT_OVERSHOOT),
-        { duration: EXIT_DURATION },
-        (finished) => {
+
+      // A swipe is already mid-slide, with the lime check revealed under it.
+      // A tap, a menu action or a TalkBack action starts from rest — so the
+      // tick lands on the square first, then the row leaves. Reduced motion
+      // cuts both the beat and the slide.
+      const startsAtRest = Math.abs(translateX.value) < 1;
+      // Never on a done task: there, 'complete' means reopen (Completed filter).
+      const showTick = reason === 'complete' && startsAtRest && task.status !== 'done';
+      if (showTick) setCompleting(true);
+      const beat = showTick && !reduceMotion ? TICK_BEAT : 0;
+      const exitDuration = reduceMotion ? 0 : EXIT_DURATION;
+      const collapseDuration = reduceMotion ? 0 : COLLAPSE_DURATION;
+
+      translateX.value = withDelay(
+        beat,
+        withTiming(direction * (rowWidth + EXIT_OVERSHOOT), { duration: exitDuration }, (finished) => {
           if (!finished) return;
-          rowOpacity.value = withTiming(0, { duration: COLLAPSE_DURATION });
-          rowScaleHeight.value = withTiming(0, { duration: COLLAPSE_DURATION }, (done) => {
+          rowOpacity.value = withTiming(0, { duration: collapseDuration });
+          rowScaleHeight.value = withTiming(0, { duration: collapseDuration }, (done) => {
             if (done) runOnJS(finishExit)(reason);
           });
-        },
+        }),
       );
     },
-    [exiting, translateX, rowWidth, rowOpacity, rowScaleHeight, finishExit],
+    [exiting, translateX, rowWidth, rowOpacity, rowScaleHeight, finishExit, reduceMotion, task.status],
   );
 
   useEffect(() => registerExit(task.id, runExit), [registerExit, task.id, runExit]);
@@ -199,15 +226,19 @@ export function SwipeableTaskRow({
                 wrapper they were unreachable: it isn't focusable. */}
             <TaskRow
               task={task}
+              variant={variant}
+              completing={completing}
               onStatusPress={onStatusPress}
               onPress={onOpen}
               accessibilityActions={[
-                { name: 'cycle', label: 'Change status' },
                 { name: 'complete', label: task.status === 'done' ? 'Mark not done' : 'Mark done' },
+                ...(onToggleNow && task.status !== 'done'
+                  ? [{ name: 'now', label: task.status === 'active' ? 'Pause' : 'Start' }]
+                  : []),
                 { name: 'delete', label: 'Delete' },
               ]}
               onAccessibilityAction={(e) => {
-                if (e.nativeEvent.actionName === 'cycle') onStatusPress();
+                if (e.nativeEvent.actionName === 'now') onToggleNow?.(task);
                 if (e.nativeEvent.actionName === 'complete') {
                   if (completeBehavior === 'exit') runExit(1, 'complete');
                   else onComplete(task);

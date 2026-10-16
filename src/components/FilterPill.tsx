@@ -12,11 +12,13 @@ interface Props {
   onPress: () => void;
 }
 
-// DESIGN.md §6 — rounded-full pill. Unselected: border-subtle outline,
-// text-secondary label. Selected: solid fill in the category's (or
-// accent-primary's) color, dark text for contrast.
+// DESIGN.md §6 — rounded-full pill. Unselected: border-strong outline (it is
+// the pill's only container cue; border-subtle was 1.35:1), text-secondary
+// label. Selected: solid fill in the category's color, or neutral-inverse
+// (text-primary) when it has none, with dark text. Selection is not lime —
+// lime means "act here / now / today" (DESIGN.md §2).
 export function FilterPill({ label, color, icon, selected, onPress }: Props) {
-  const fill = selected ? (color ?? colors.accentPrimary) : 'transparent';
+  const fill = selected ? (color ?? colors.textPrimary) : 'transparent';
   const textColor = selected ? colors.bgBase : colors.textSecondary;
 
   return (
@@ -27,7 +29,7 @@ export function FilterPill({ label, color, icon, selected, onPress }: Props) {
       hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      style={[styles.pill, { backgroundColor: fill, borderColor: selected ? fill : colors.borderSubtle }]}>
+      style={[styles.pill, { backgroundColor: fill, borderColor: selected ? fill : colors.borderStrong }]}>
       {icon && <DynamicIcon name={icon} size={14} color={textColor} strokeWidth={2} />}
       <Text style={[styles.label, { color: textColor }]} numberOfLines={1}>
         {label}

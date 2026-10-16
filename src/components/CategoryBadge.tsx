@@ -32,10 +32,14 @@ export function CategoryBadge({ category }: Props) {
 }
 
 const styles = StyleSheet.create({
+  // flexShrink lets a long category name give way inside a wrapping meta row
+  // instead of a fixed width cutting "Programming" to "Programmin.." at larger
+  // system font sizes.
   container: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
+    flexShrink: 1,
   },
   dot: {
     width: 8,
@@ -53,6 +57,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: fontSize.caption,
     color: colors.textSecondary,
-    maxWidth: 110,
+    flexShrink: 1,
   },
 });

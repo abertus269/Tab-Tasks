@@ -1,10 +1,9 @@
 import {
   continuousMonthRange,
-  continuousWeekRange,
   formatWeekRangeLabel,
   monthGrid,
   monthGridRange,
-  sumTaskCounts,
+  monthTotalsForYear,
   toDateString,
   weekdayAbbr,
   weekDays,
@@ -40,10 +39,19 @@ describe('weekDays', () => {
 });
 
 describe('monthGrid', () => {
-  it('is always a stable 6x7 grid', () => {
-    const grid = monthGrid(new Date(2026, 7, 1)); // August 2026
-    expect(grid).toHaveLength(6);
-    grid.forEach((row) => expect(row).toHaveLength(7));
+  it('is whole weeks: every row is 7 wide', () => {
+    for (const month of [0, 1, 7, 9]) {
+      monthGrid(new Date(2026, month, 1)).forEach((row) => expect(row).toHaveLength(7));
+    }
+  });
+
+  it('uses only the rows the month needs: 4, 5 or 6', () => {
+    // Feb 2026 starts on a Sunday and has 28 days: exactly four weeks.
+    expect(monthGrid(new Date(2026, 1, 1))).toHaveLength(4);
+    // Oct 2026 starts on a Thursday: 4 leading + 31 days = 35 cells.
+    expect(monthGrid(new Date(2026, 9, 1))).toHaveLength(5);
+    // Aug 2026 starts on a Saturday: 6 leading + 31 days = 37 cells.
+    expect(monthGrid(new Date(2026, 7, 1))).toHaveLength(6);
   });
 
   it('rolls over into the previous and next month at the grid edges', () => {
@@ -54,6 +62,12 @@ describe('monthGrid', () => {
     expect(flat).toContain('2026-08-01');
     expect(flat).toContain('2026-08-31');
     expect(flat[flat.length - 1] > '2026-08-31').toBe(true);
+  });
+
+  it('ends the grid in the week that holds the last day, never a whole extra week', () => {
+    // Oct 31 2026 is a Saturday, so the last row ends exactly on it.
+    const grid = monthGrid(new Date(2026, 9, 1));
+    expect(grid[grid.length - 1][6]).toBe('2026-10-31');
   });
 
   it('handles a leap-year February correctly', () => {
@@ -68,7 +82,7 @@ describe('monthGrid', () => {
     const grid = monthGrid(anchor);
     const range = monthGridRange(anchor);
     expect(range.start).toBe(grid[0][0]);
-    expect(range.end).toBe(grid[5][6]);
+    expect(range.end).toBe(grid[grid.length - 1][6]);
   });
 });
 
@@ -103,23 +117,6 @@ describe('continuousMonthRange', () => {
   });
 });
 
-describe('continuousWeekRange', () => {
-  it('returns one week-start Date per week, in order, 7 days apart', () => {
-    const weeks = continuousWeekRange(new Date(2026, 7, 21), 1, 2); // Fri Aug 21 2026
-    expect(weeks).toHaveLength(4); // 1 back + anchor's week + 2 forward
-    for (let i = 1; i < weeks.length; i++) {
-      const gap = (weeks[i].getTime() - weeks[i - 1].getTime()) / (1000 * 60 * 60 * 24);
-      expect(gap).toBe(7);
-    }
-  });
-
-  it("anchors weeksBack=0/weeksForward=0 to exactly the anchor's own week", () => {
-    const weeks = continuousWeekRange(new Date(2026, 7, 21), 0, 0); // Fri Aug 21 2026
-    expect(weeks).toHaveLength(1);
-    expect(toDateString(weeks[0])).toBe('2026-08-16'); // Sunday-start of that week
-  });
-});
-
 describe('formatWeekRangeLabel', () => {
   it('formats a same-month week as "MMM d – d"', () => {
     expect(formatWeekRangeLabel(new Date(2026, 7, 24))).toBe('Aug 23 – 29');
@@ -136,14 +133,24 @@ describe('formatWeekRangeLabel', () => {
   });
 });
 
-describe('sumTaskCounts', () => {
-  it('sums counts for the given keys, defaulting missing keys to 0', () => {
-    const counts = { '2026-08-16': 2, '2026-08-18': 1 };
-    const total = sumTaskCounts(counts, weekDays(new Date(2026, 7, 21)));
-    expect(total).toBe(3);
+describe('monthTotalsForYear', () => {
+  it('returns 12 totals, January first, defaulting empty months to 0', () => {
+    const totals = monthTotalsForYear({}, 2026);
+    expect(totals).toHaveLength(12);
+    expect(totals.every((n) => n === 0)).toBe(true);
   });
 
-  it('returns 0 for an empty count map', () => {
-    expect(sumTaskCounts({}, weekDays(new Date(2026, 7, 21)))).toBe(0);
+  it('sums the per-day counts into their month', () => {
+    const counts = { '2026-01-05': 2, '2026-01-31': 1, '2026-10-17': 3, '2026-12-01': 4 };
+    const totals = monthTotalsForYear(counts, 2026);
+    expect(totals[0]).toBe(3);
+    expect(totals[9]).toBe(3);
+    expect(totals[11]).toBe(4);
+    expect(totals[1]).toBe(0);
+  });
+
+  it('ignores dates from other years', () => {
+    const counts = { '2025-10-17': 5, '2027-10-17': 7, '2026-10-17': 1 };
+    expect(monthTotalsForYear(counts, 2026)[9]).toBe(1);
   });
 });

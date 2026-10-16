@@ -75,6 +75,11 @@ export function MonthView({ anchorDate, onSelectDate }: Props) {
         initialNumToRender={5}
         windowSize={7}
         maxToRenderPerBatch={5}
+        // Month blocks are 4–6 rows tall, so the list can't know where the
+        // anchor month sits until the blocks above it are measured. This keeps
+        // the month you opened on pinned at the top while that happens,
+        // instead of landing a row early on the previous month's last week.
+        maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
         contentContainerStyle={styles.list}
         renderItem={({ item: monthStart }) => (
           <MonthBlock

@@ -20,7 +20,7 @@ export function TodayTasksWidget({ tasks }: { tasks: TaskWithCategory[] }) {
         width: 'match_parent',
         backgroundColor: colors.bgSurface,
         borderRadius: 20,
-        paddingVertical: 8,
+        paddingVertical: 4,
       }}
     >
       {tasks.length === 0 ? (
@@ -55,9 +55,9 @@ function TaskRowWidget({ task }: { task: TaskWithCategory }) {
         flexDirection: 'row',
         alignItems: 'center',
         width: 'match_parent',
-        height: 44,
-        // The status target below is 44dp wide with the square centered,
-        // which puts the square 12dp from the edge on its own.
+        height: 48,
+        // The status target below is 48dp wide with the square centered,
+        // which puts the square 14dp from the edge on its own.
         paddingRight: 12,
       }}
     >
@@ -79,7 +79,7 @@ function TaskRowWidget({ task }: { task: TaskWithCategory }) {
           text={formatTime12h(task.dueTime)}
           style={{
             fontFamily: fonts.mono,
-            fontSize: 11,
+            fontSize: 12,
             color: isDone ? colors.textMuted : colors.textSecondary,
             marginLeft: 8,
           }}
@@ -89,15 +89,15 @@ function TaskRowWidget({ task }: { task: TaskWithCategory }) {
   );
 }
 
-const STATUS_SPOKEN: Record<TaskStatus, string> = { todo: 'to do', active: 'active', done: 'done' };
+const STATUS_SPOKEN: Record<TaskStatus, string> = { todo: 'to do', active: 'in progress', done: 'done' };
 
 // A 20dp rounded square: empty outline (todo), lime outline + inner dot
-// (active), filled lime + check (done) — the same three states as
-// src/components/TaskRow.tsx's checkbox, tap-clickable on its own to cycle
+// (active), filled grey + check (done) — the same three states as
+// src/components/TaskRow.tsx's checkbox, tap-clickable on its own to change
 // status without opening the app (the row body around it opens the app
 // instead — see TaskRowWidget's own clickAction).
 //
-// RemoteViews has no hitSlop, so the clickable is a full row-height 44×44dp
+// RemoteViews has no hitSlop, so the clickable is a full row-height 48×48dp
 // box with the square centered in it — a bare 20dp clickable meant a near
 // miss landed on the row and opened the app instead of changing status.
 function StatusIndicator({ status, taskId }: { status: TaskStatus; taskId: string }) {
@@ -106,7 +106,7 @@ function StatusIndicator({ status, taskId }: { status: TaskStatus; taskId: strin
       clickAction="CYCLE_STATUS"
       clickActionData={{ taskId, status }}
       accessibilityLabel={`Status, ${STATUS_SPOKEN[status]}. Tap to change.`}
-      style={{ width: 44, height: 44, justifyContent: 'center', alignItems: 'center' }}
+      style={{ width: 48, height: 48, justifyContent: 'center', alignItems: 'center' }}
     >
       <StatusSquare status={status} />
     </FlexWidget>
@@ -121,7 +121,7 @@ function StatusSquare({ status }: { status: TaskStatus }) {
           width: 20,
           height: 20,
           borderRadius: 6,
-          backgroundColor: colors.accentPrimary,
+          backgroundColor: colors.textMuted,
           justifyContent: 'center',
           alignItems: 'center',
         }}

@@ -4,7 +4,6 @@ import { useMemo } from 'react';
 
 import { db } from '@/db/client';
 import { categories, tasks } from '@/db/schema';
-import { currentYearString } from '@/lib/dates';
 import { compareTasks } from '@/lib/ordering';
 import type { TaskWithCategory } from '@/lib/types';
 
@@ -92,32 +91,5 @@ export function useTaskCountsInRange(start: string, end: string): Record<string,
       map[row.dueDate] = row.count;
     }
     return map;
-  }, [data]);
-}
-
-export interface YearCount {
-  year: string;
-  count: number;
-}
-
-// SPEC.md §5.4 — years that have tasks, plus the current year even at zero.
-export function useYearCounts(): YearCount[] {
-  const query = useMemo(
-    () =>
-      db
-        .select({ year: sql<string>`substr(${tasks.dueDate}, 1, 4)`, count: sql<number>`count(*)` })
-        .from(tasks)
-        .groupBy(sql`substr(${tasks.dueDate}, 1, 4)`),
-    [],
-  );
-  const { data } = useLiveQuery(query, [query]);
-
-  return useMemo(() => {
-    const rows = data ?? [];
-    const currentYear = currentYearString();
-    const withCurrent = rows.some((r) => r.year === currentYear)
-      ? rows
-      : [...rows, { year: currentYear, count: 0 }];
-    return [...withCurrent].sort((a, b) => (a.year < b.year ? 1 : -1));
   }, [data]);
 }

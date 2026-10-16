@@ -1,9 +1,9 @@
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { type NavigationAction, usePreventRemove } from 'expo-router/react-navigation';
-import { Bell, Calendar, Check, Clock, Trash2, X } from 'lucide-react-native';
+import { Bell, Calendar, Clock, Trash2, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CategoryPicker } from '@/components/CategoryPicker';
@@ -36,7 +36,20 @@ export default function TaskFormScreen() {
   const params = useLocalSearchParams<{ id?: string; dueDate?: string }>();
   const editingId = params.id;
   const isEditing = !!editingId;
-  const existingTask = useTask(editingId);
+  const liveTask = useTask(editingId);
+
+  // useTask reports null both before the first load and after the row is
+  // deleted. A delete from this very form lands mid-handleDelete, and falling
+  // back to the blank loading view then would unmount TaskFormBody — taking
+  // its `closing` effect, the only thing that calls router.back(), with it —
+  // and strand the user on an empty screen. So once the task has loaded, keep
+  // rendering its last copy until the screen closes. The id check stops a
+  // reused route instance from showing the previous task's data for a new id.
+  // (Set during render, not in an effect — liveTask is memoized per query
+  // result in useJoinedTasks, so the identity check settles after one pass.)
+  const [lastTask, setLastTask] = useState<TaskWithCategory | null>(null);
+  if (liveTask && liveTask !== lastTask) setLastTask(liveTask);
+  const existingTask = liveTask ?? (lastTask?.id === editingId ? lastTask : null);
 
   if (isEditing && !existingTask) {
     return <View style={styles.container} />;
@@ -202,16 +215,14 @@ function TaskFormBody({ editingId, initialTask, defaultDueDate }: BodyProps) {
         <Text style={styles.headerTitle} accessibilityRole="header">
           {isEditing ? 'Edit task' : 'New task'}
         </Text>
-        <IconButton
-          icon={Check}
-          label="Save task"
-          onPress={handleSave}
-          disabled={!canSave}
-          color={canSave ? colors.accentPrimary : colors.textMuted}
-          strokeWidth={2.25}
-        />
+        {/* Keeps the title centered now that Save lives at the bottom. */}
+        <View style={styles.headerSpacer} />
       </View>
 
+      {/* The Save button sits above the keyboard, in the thumb zone, instead
+          of in the top-right corner — the one-handed reach PRODUCT.md asks
+          for, and the bottom-anchored primary action DESIGN.md §6 specifies. */}
+      <KeyboardAvoidingView style={styles.keyboardAvoider} behavior="padding">
       <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
         <TextInput
           value={title}
@@ -221,6 +232,10 @@ function TaskFormBody({ editingId, initialTask, defaultDueDate }: BodyProps) {
           style={styles.titleInput}
           autoFocus={!isEditing}
           accessibilityLabel="Task title"
+          // Enter on the keyboard saves — type a title, tap once, done.
+          returnKeyType="done"
+          submitBehavior="blurAndSubmit"
+          onSubmitEditing={handleSave}
         />
 
         <View style={styles.fieldRow}>
@@ -315,6 +330,20 @@ function TaskFormBody({ editingId, initialTask, defaultDueDate }: BodyProps) {
         )}
       </ScrollView>
 
+      <View style={styles.footer}>
+        <Pressable
+          onPress={handleSave}
+          disabled={!canSave}
+          accessibilityRole="button"
+          accessibilityLabel="Save task"
+          accessibilityHint={canSave ? undefined : 'Add a title first'}
+          accessibilityState={{ disabled: !canSave }}
+          style={[styles.saveButton, !canSave && styles.saveButtonDisabled]}>
+          <Text style={styles.saveLabel}>Save task</Text>
+        </Pressable>
+      </View>
+      </KeyboardAvoidingView>
+
       <DiscardChangesPrompt
         visible={!!pendingExit}
         onKeepEditing={() => setPendingExit(null)}
@@ -352,6 +381,12 @@ const styles = StyleSheet.create({
     fontSize: fontSize.heading,
     color: colors.textPrimary,
   },
+  headerSpacer: {
+    width: minTouchTarget,
+  },
+  keyboardAvoider: {
+    flex: 1,
+  },
   form: {
     padding: spacing.lg,
     gap: spacing.lg,
@@ -362,6 +397,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderStrong,
+    minHeight: minTouchTarget,
     paddingBottom: spacing.sm,
   },
   fieldRow: {
@@ -427,9 +463,12 @@ const styles = StyleSheet.create({
   iconButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.bgSurface,
     borderRadius: radius.card,
     padding: spacing.md,
+    minWidth: minTouchTarget,
+    minHeight: minTouchTarget,
     alignSelf: 'flex-start',
   },
   iconButtonPlaceholder: {
@@ -443,11 +482,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.sm,
     paddingVertical: spacing.md,
+    minHeight: minTouchTarget,
     marginTop: spacing.md,
   },
   deleteLabel: {
     fontFamily: fonts.bodyMedium,
     fontSize: fontSize.body,
     color: colors.danger,
+  },
+  footer: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
+    backgroundColor: colors.bgBase,
+  },
+  saveButton: {
+    minHeight: minTouchTarget + spacing.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accentPrimary,
+    borderRadius: radius.pill,
+  },
+  // Dimmed until there's a title; the title field above already says what's
+  // missing, and TalkBack gets the reason as the button's hint.
+  saveButtonDisabled: {
+    opacity: 0.4,
+  },
+  saveLabel: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSize.body,
+    color: colors.bgBase,
   },
 });

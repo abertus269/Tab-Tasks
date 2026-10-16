@@ -36,6 +36,21 @@ export function filterTasks<T extends FilterableTask>(tasks: T[], filter: Filter
   return tasks.filter((task) => matchesFilter(task, filter));
 }
 
+// The Now card (src/components/NowCard.tsx) lifts the active tasks out of the
+// dated list and pins them above it, wherever their due date falls — "what
+// I'm doing right now" outranks "what's due next". Both halves keep their
+// incoming order, so the dated list stays exactly the merged sort order
+// (compareTasks) minus the tasks that moved up. That is a view-level lift
+// like the Today divider, not a re-sort or a per-category grouping.
+export function splitNowTasks<T extends { status: TaskStatus }>(tasks: T[]): { now: T[]; rest: T[] } {
+  const now: T[] = [];
+  const rest: T[] = [];
+  for (const task of tasks) {
+    (task.status === 'active' ? now : rest).push(task);
+  }
+  return { now, rest };
+}
+
 // hasAnyInScope: whether any task exists in this filter's category scope,
 // regardless of status — distinguishes "nothing here at all" from "everything
 // here is done" so the empty state can say which one is true.
